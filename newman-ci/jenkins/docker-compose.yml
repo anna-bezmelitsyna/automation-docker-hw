@@ -1,0 +1,25 @@
+# Запуск Jenkins у Docker із пробросом портів на localhost.
+#
+#   cd newman-ci/jenkins
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# Пароль першого входу:
+#   docker compose exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+services:
+  jenkins:
+    build: .
+    image: jenkins-newman:local
+    container_name: jenkins-newman
+    # root — щоб усередині був доступ до /var/run/docker.sock (локальний/навчальний сетап).
+    user: root
+    ports:
+      - "8080:8080"     # веб-інтерфейс  → http://localhost:8080
+      - "50000:50000"   # підключення inbound-агентів
+    volumes:
+      - jenkins_home:/var/jenkins_home              # дані Jenkins (jobs, плагіни, історія)
+      - /var/run/docker.sock:/var/run/docker.sock   # доступ до Docker хоста (DooD)
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

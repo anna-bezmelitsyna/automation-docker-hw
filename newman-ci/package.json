@@ -1,0 +1,19 @@
+{
+  "name": "postman-newman-tests",
+  "version": "1.0.0",
+  "description": "API-тести (Postman-колекції), що запускаються через Newman у Docker / Jenkins",
+  "private": true,
+  "scripts": {
+    "test": "node run-tests.js",
+    "docker:build": "docker build -t postman-newman-tests:local .",
+    "docker:test": "docker compose run --rm newman",
+    "clean": "node -e \"require('fs').rmSync('reports',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "newman": "^6.2.2",
+    "newman-reporter-htmlextra": "^1.22.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

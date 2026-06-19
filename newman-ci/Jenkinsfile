@@ -1,0 +1,108 @@
+// Jenkins Pipeline: Postman-колекції проганяються через Newman УСЕРЕДИНІ Docker-контейнера.
+//
+// Вимоги до агента:
+//   * встановлений Docker CLI і доступний демон (docker build / docker run);
+//   * плагіни Jenkins: "JUnit" і "HTML Publisher".
+//
+// Що робить pipeline:
+//   1. збирає Docker-образ із Newman + htmlextra;
+//   2. запускає контейнер, який проганяє тест-план і пише звіти у змонтований ./reports;
+//   3. публікує JUnit-результати, HTML-звіт і архівує артефакти.
+//
+// Падіння тестів роблять збірку UNSTABLE (через JUnit), а реальні помилки Docker — FAILED.
+
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    timeout(time: 20, unit: 'MINUTES')
+    disableConcurrentBuilds()
+  }
+
+  parameters {
+    string(name: 'ONLY', defaultValue: '',
+           description: 'Імена прогонів через кому (порожньо = весь активний тест-план). Напр.: lecture-1,homework-flow')
+    booleanParam(name: 'BAIL', defaultValue: false,
+           description: 'Зупиняти прогін на першому впалому тесті')
+  }
+
+  environment {
+    IMAGE = "postman-newman-tests:${env.BUILD_NUMBER}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build Docker image') {
+      steps {
+        // Збірка з каталогу newman-ci (де лежить цей Jenkinsfile і Dockerfile).
+        dir('newman-ci') {
+          sh 'docker build -t "$IMAGE" .'
+        }
+      }
+    }
+
+    stage('Run Newman tests (in Docker)') {
+      steps {
+        dir('newman-ci') {
+          sh '''
+            set +e
+            rm -rf reports && mkdir -p reports
+            CONTAINER="newman-run-${BUILD_NUMBER}"
+
+            docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+            # create+start+cp (а не -v монтування) — щоб звіти забиралися коректно
+            # і на звичайному агенті, і коли сам Jenkins крутиться в контейнері (DooD).
+            docker create --name "$CONTAINER" \
+              -e REPORTS_DIR=/app/reports \
+              -e ONLY="${ONLY}" \
+              -e NEWMAN_BAIL="${BAIL}" \
+              "$IMAGE" >/dev/null
+
+            docker start -a "$CONTAINER"
+            code=$?
+
+            # Забираємо звіти з контейнера в workspace (потік по Docker API — шлях хоста не потрібен).
+            docker cp "$CONTAINER:/app/reports/." reports/ || true
+            docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+            echo "Newman exit code: $code"
+            # >=125 — помилка самого Docker/контейнера (не запустився, немає образу тощо) → валимо збірку.
+            # 1 — це падіння тестів: їх підхопить JUnit і позначить збірку UNSTABLE.
+            if [ "$code" -ge 125 ]; then
+              echo "Помилка Docker (код $code) — провалюємо стадію."
+              exit "$code"
+            fi
+            exit 0
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      junit testResults: 'newman-ci/reports/junit-*.xml', allowEmptyResults: true
+
+      publishHTML(target: [
+        reportDir: 'newman-ci/reports',
+        reportFiles: 'index.html',
+        reportName: 'Newman HTML Report',
+        keepAll: true,
+        alwaysLinkToLastBuild: true,
+        allowMissing: true
+      ])
+
+      archiveArtifacts artifacts: 'newman-ci/reports/**', allowEmptyArchive: true, fingerprint: true
+    }
+    cleanup {
+      sh 'docker rmi "$IMAGE" || true'
+    }
+  }
+}

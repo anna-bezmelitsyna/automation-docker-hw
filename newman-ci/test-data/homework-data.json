@@ -1,0 +1,20 @@
+[
+	{
+		"userId": 1,
+		"title": "Пост від user 1",
+		"body": "Тіло першого поста",
+		"expectedName": "Leanne Graham"
+	},
+	{
+		"userId": 3,
+		"title": "Пост від user 3",
+		"body": "Тіло другого поста",
+		"expectedName": "Clementine Bauch"
+	},
+	{
+		"userId": 5,
+		"title": "Пост від user 5",
+		"body": "Тіло третього поста",
+		"expectedName": "Chelsey Dietrich"
+	}
+]

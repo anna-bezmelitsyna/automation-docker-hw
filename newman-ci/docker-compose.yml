@@ -1,0 +1,14 @@
+# Локальний запуск тестів у контейнері:
+#   docker compose run --rm newman
+# Звіти з'являться в ./reports на хості.
+services:
+  newman:
+    build: .
+    image: postman-newman-tests:local
+    environment:
+      - REPORTS_DIR=/app/reports
+      # Передати свої значення за потреби:
+      # - ONLY=lecture-1,homework-flow
+      # - NEWMAN_BAIL=true
+    volumes:
+      - ./reports:/app/reports

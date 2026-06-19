@@ -1,0 +1,30 @@
+[
+    {
+        "title": "Перший пост з файла",
+        "body": "Тіло першого поста",
+        "userId": 1,
+        "expectedStatus": 201,
+        "expectedName": "Leanne Graham"
+    },
+    {
+        "title": "Другий пост з файла",
+        "body": "Тіло другого поста",
+        "userId": 2,
+        "expectedStatus": 201,
+        "expectedName": "Ervin Howell"
+    },
+    {
+        "title": "Третій пост з кириличним текстом",
+        "body": "Текст з україномовним вмістом — перевіряємо UTF-8",
+        "userId": 5,
+        "expectedStatus": 201,
+        "expectedName": "Chelsey Dietrich"
+    },
+    {
+        "title": "Граничне значення: дуже довгий title",
+        "body": "Перевіряємо, як API реагує на довгі поля даних, які можуть бути близькими до ліміту",
+        "userId": 10,
+        "expectedStatus": 201,
+        "expectedName": "Clementina DuBuque"
+    }
+]

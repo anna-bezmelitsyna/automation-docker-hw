@@ -1,0 +1,649 @@
+{
+	"info": {
+		"_postman_id": "hw-flow-2025",
+		"name": "JSONPlaceholder Homework — Flow",
+		"description": "# Домашнє завдання — Секція 9: Фінальний флоу\n\n**API:** https://jsonplaceholder.typicode.com\n\nНаскрізний сценарій \"Публікація в блозі\" — 7 кроків від профілю автора до видалення поста.\n\n## Структура флоу\n```\n9.1  GET  /users/1              → JSON Schema + збережи blogUserId, blogUserName\n9.2  POST /posts (5 neg cases)  → pm.sendRequest × 5 невалідних тіл\n9.3  POST /posts (valid)        → збережи blogPostId · setNextRequest → 9.7 при помилці\n9.4  GET  /posts/{id}           → JSON Schema + Chai\n9.5  POST /comments             → async pre-check автора (done()) + збережи blogCommentId\n9.6  PATCH/posts/{id}           → часткове оновлення · перевір незмінність id та userId\n9.7  DELETE/posts/{id}          → cleanup + підсумковий лог\n```\n\n## Запуск\n```bash\nnewman run \"JSONPlaceholder Homework - Flow.postman_collection.json\"\n```\n\nЗдавати разом з основною колекцією як посилання на GitHub-репозиторій.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "9. Фінальний флоу — \"Публікація в блозі\"",
+			"description": "## Реалістичний наскрізний сценарій\n\nСимулюємо повний цикл роботи з блог-API: від отримання профілю автора до видалення поста.\n\n```\n9.1  GET  /users/1          → зберегти blogUserId, blogUserName\n9.2  POST /posts            → зберегти blogPostId  ──── якщо ≠201 → стрибок до 9.6\n9.3  GET  /posts/{id}       → перевірити пост (JSON Schema + Chai)\n9.4  POST /comments         → async pre-check автора + зберегти blogCommentId\n9.5  PATCH/posts/{id}       → змінити заголовок, перевірити часткове оновлення\n9.6  DELETE/posts/{id}      → очищення (cleanup)\n```\n\n### Що охоплюється\n| Тема | Де |\n|------|----||\n| HTTP GET / POST / PATCH / DELETE | 9.1–9.6 |\n| Collection variables (chain) | blogUserId → blogPostId → blogCommentId |\n| JSON Schema | 9.1 (user), 9.3 (post) |\n| Chai (equal, eql, be.a, have.property) | 9.2, 9.3, 9.5 |\n| Bearer auth (наслідування) | вся папка |\n| setNextRequest (error handling) | 9.2 → 9.6 при failure |\n| pm.sendRequest + done() | 9.4 |\n| qa helpers | 9.1, 9.5, 9.6 |\n\n⚠️  **Для setNextRequest:** запускай через **Collection Runner** або `newman run` — при одиночному Send не працює.",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{apiToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "HW 9.1 — GET /users/1 (профіль автора)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Старт флоу — логуємо заголовок",
+									"console.log(\"═══════════════════════════════════════════\");",
+									"console.log(\"🚀 Старт флоу: Публікація в блозі\");",
+									"console.log(\"   apiToken:\", pm.collectionVariables.get(\"apiToken\"));",
+									"console.log(\"═══════════════════════════════════════════\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.1 — Отримати профіль автора",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Завдання:",
+									"//   1. Перевір статус 200",
+									"//   2. Валідуй відповідь через JSON Schema (обов'язкові поля: id, name, username, email)",
+									"//   3. Перевір що email містить \"@\" (Chai .match або .include)",
+									"//   4. Збережи user.id у collectionVar \"blogUserId\"",
+									"//      Збережи user.name у collectionVar \"blogUserName\"",
+									"//   5. Виклич qa.logResponse(\"9.1\", pm.response)",
+									"",
+									"const userSchema = {",
+									"    type: \"object\",",
+									"    required: [\"id\", \"name\", \"username\", \"email\"],",
+									"    properties: {",
+									"        id:       { type: \"number\" },",
+									"        name:     { type: \"string\" },",
+									"        username: { type: \"string\" },",
+									"        email:    { type: \"string\" }",
+									"    }",
+									"};",
+									"",
+									"pm.test(\"✅ 9.1 — Статус 200\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.1 — JSON Schema користувача валідна\", function () {",
+									"    // TODO: pm.response.to.have.jsonSchema(userSchema)",
+									"});",
+									"",
+									"pm.test(\"✅ 9.1 — Email містить @\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.1 — Збережено blogUserId і blogUserName\", function () {",
+									"    const user = pm.response.json();",
+									"    // TODO: pm.collectionVariables.set(\"blogUserId\", user.id.toString())",
+									"    // TODO: pm.collectionVariables.set(\"blogUserName\", user.name)",
+									"    console.log(\"Автор флоу:\", user.id, \"—\", user.name);",
+									"});",
+									"",
+									"// TODO: qa.logResponse(\"9.1\", pm.response);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "**Крок 1/6.** Завантажуємо профіль автора і зберігаємо його дані для всіх наступних кроків.\n\n> 🔑 `blogUserId` та `blogUserName` будуть використані у кроках 9.2–9.6.\n\n**Теми:** GET, JSON Schema, Chai, Collection variables, qa helpers."
+					}
+				},
+				{
+					"name": "HW 9.2 — POST /posts (негативні кейси)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"console.log(\"🔴 Негативне тестування POST /posts — 5 невалідних кейсів\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.2 — 5 негативних кейсів для POST /posts",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Усі 5 запитів йдуть до одного ендпоінта через pm.sendRequest.",
+									"// JSONPlaceholder — fake API, повертає 201 для будь-якого тіла.",
+									"// У реальному API кожен кейс повинен повертати 400 або 422.",
+									"",
+									"const endpoint = pm.collectionVariables.get(\"baseUrl\") + \"/posts\";",
+									"",
+									"const negCases = [",
+									"    {",
+									"        label:        \"1 — Порожнє тіло {}\",",
+									"        payload:      {},",
+									"        realExpected: 400,",
+									"        note:         \"Усі обов'язкові поля відсутні\"",
+									"    },",
+									"    {",
+									"        label:        \"2 — Відсутній title\",",
+									"        payload:      { body: \"Тіло поста\", userId: 1 },",
+									"        realExpected: 422,",
+									"        note:         \"Поле title є обов'язковим\"",
+									"    },",
+									"    {",
+									"        label:        \"3 — Пустий title (empty string)\",",
+									"        payload:      { title: \"\", body: \"Тіло поста\", userId: 1 },",
+									"        realExpected: 422,",
+									"        note:         \"Порожній рядок не є валідним заголовком\"",
+									"    },",
+									"    {",
+									"        label:        \"4 — userId є рядком замість числа\",",
+									"        payload:      { title: \"Тест\", body: \"Тіло\", userId: \"не-число\" },",
+									"        realExpected: 422,",
+									"        note:         \"userId повинен бути цілим числом (number)\"",
+									"    },",
+									"    {",
+									"        label:        \"5 — userId не існує (99999)\",",
+									"        payload:      { title: \"Тест\", body: \"Тіло\", userId: 99999 },",
+									"        realExpected: 404,",
+									"        note:         \"Референційна цілісність: userId має вказувати на реального юзера\"",
+									"    },",
+									"];",
+									"",
+									"negCases.forEach(function (tc) {",
+									"    pm.test(\"❌ Негативний кейс: \" + tc.label, function (done) {",
+									"        pm.sendRequest({",
+									"            url:    endpoint,",
+									"            method: \"POST\",",
+									"            header: [{ key: \"Content-Type\", value: \"application/json\" }],",
+									"            body:   { mode: \"raw\", raw: JSON.stringify(tc.payload) }",
+									"        }, function (err, res) {",
+									"            if (err) { done(err); return; }",
+									"            console.log(\"[\" + tc.label + \"] \" + tc.note);",
+									"            console.log(\"  → Отримали: \" + res.code +",
+									"                        \" | Реальне API поверне: \" + tc.realExpected);",
+									"            // TODO: для реального API розкоментуй:",
+									"            // pm.expect(res.code).to.eql(tc.realExpected);",
+									"            pm.expect(res.code).to.be.a(\"number\"); // Документуємо кейс",
+									"            done();",
+									"        });",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "**Крок 2/7.** 5 невалідних кейсів для POST /posts — всі через `pm.sendRequest` з одного тест-скрипту.\n\n| # | Невалідний кейс | Очікуваний статус реального API |\n|---|-----------------|----------------------------------|\n| 1 | Порожнє тіло `{}` | 400 Bad Request |\n| 2 | Відсутній `title` | 422 Unprocessable Entity |\n| 3 | Пустий `title: \"\"` | 422 Unprocessable Entity |\n| 4 | `userId: \"рядок\"` | 422 Unprocessable Entity |\n| 5 | `userId: 99999` (не існує) | 404 / 422 |\n\n> ℹ️ JSONPlaceholder повертає `201` для будь-якого тіла — це fake API. Тести документують **що** перевіряти, а не реальну поведінку.\n\n**Теми:** pm.sendRequest, async done(), негативне тестування, реферальна цілісність."
+					}
+				},
+				{
+					"name": "HW 9.3 — POST /posts (публікація)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо унікальний заголовок та тіло — кожен запуск різний.",
+									"// qa.randomEmail() доступний через bare-assignment у pre-request колекції.",
+									"const title = \"[QA Test] Публікація \" + Date.now();",
+									"const body  = \"Автоматизований тест. Автор: \" + qa.randomEmail();",
+									"pm.collectionVariables.set(\"blogTitle\", title);",
+									"pm.collectionVariables.set(\"blogBody\",  body);",
+									"console.log(\"Заголовок поста:\", title);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.2 — Створити публікацію",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Завдання:",
+									"//   1. Перевір статус 201",
+									"//   2. Chai: title у відповіді === pm.collectionVariables.get(\"blogTitle\")",
+									"//   3. Chai: userId у відповіді === parseInt(pm.collectionVariables.get(\"blogUserId\"))",
+									"//   4. Chai: поле id існує та є числом > 0",
+									"//   5. Збережи id відповіді у \"blogPostId\"",
+									"//   6. setNextRequest-захист: якщо статус НЕ 201 — перейти до \"HW 9.7 — DELETE /posts (видалення)\"",
+									"//      (симулює реальну поведінку: при помилці пропускаємо кроки 3–5 і йдемо до очищення)",
+									"",
+									"pm.test(\"✅ 9.2 — Статус 201 Created\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.2 — title, userId та id у відповіді коректні\", function () {",
+									"    const json = pm.response.json();",
+									"    // TODO: три assertions — title, userId, id",
+									"});",
+									"",
+									"pm.test(\"✅ 9.2 — Збережено blogPostId\", function () {",
+									"    const id = pm.response.json().id;",
+									"    // TODO: pm.collectionVariables.set(\"blogPostId\", id.toString())",
+									"    console.log(\"📌 blogPostId =\", id);",
+									"});",
+									"",
+									"// ── Захисний перехід ─────────────────────────────────────────",
+									"// У реальному проєкті: якщо пост не створено — пропустити кроки 3-5",
+									"// і перейти одразу до кроку очищення (DELETE).",
+									"// Спрацьовує тільки в Collection Runner / Newman.",
+									"if (pm.response.code !== 201) {",
+									"    console.warn(\"⚠️  Пост не створено (код \" + pm.response.code + \"). Перехід до очищення.\");",
+									"    // TODO: pm.execution.setNextRequest(\"HW 9.7 — DELETE /posts (видалення)\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "**Крок 2/6.** Публікуємо пост від імені автора (blogUserId).\n\n> ⚠️ **setNextRequest-захист:** якщо POST поверне не 201 — автоматично перестрибуємо до 9.6 (DELETE), пропускаючи кроки 9.3–9.5. Це стандартний патерн у test automation: *якщо головна дія не вдалась — не виконуй залежні перевірки, одразу прибирай за собою.*\n\n**Теми:** POST, Chai, Collection variables, setNextRequest.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\":  \"{{blogTitle}}\",\n    \"body\":   \"{{blogBody}}\",\n    \"userId\": {{blogUserId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.4 — GET /posts (перевірка публікації)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// JSONPlaceholder симулює створення (повертає id=101), але не зберігає дані.",
+									"// GET /posts/101 поверне 404. Для демонстрації флоу використовуємо відомий пост.",
+									"// У реальному API цей блок не потрібен — {{blogPostId}} підставлявся б напряму.",
+									"const rawId = parseInt(pm.collectionVariables.get(\"blogPostId\") || \"1\");",
+									"const safeId = (rawId > 0 && rawId <= 100) ? rawId : 1;",
+									"pm.collectionVariables.set(\"blogPostId\", safeId.toString());",
+									"if (safeId !== rawId) {",
+									"    console.log(\"ℹ️  JSONPlaceholder: id \" + rawId + \" → fallback до id=\" + safeId);",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.3 — Перевірити, що пост доступний",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Завдання:",
+									"//   1. Перевір статус 200",
+									"//   2. Визнач JSON Schema поста і валідуй (поля userId, id, title, body — всі обов'язкові)",
+									"//   3. Chai: поле id — число (type assertion: pm.expect(json.id).to.be.a(\"number\"))",
+									"//   4. Chai: поле userId === parseInt(pm.collectionVariables.get(\"blogUserId\"))",
+									"",
+									"const postSchema = {",
+									"    // TODO: type: \"object\", required: [...], properties: {...}",
+									"};",
+									"",
+									"pm.test(\"✅ 9.3 — Статус 200\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.3 — JSON Schema поста валідна\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.3 — id є числом\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.3 — userId збігається з автором\", function () {",
+									"    // TODO",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 3/6.** Перевіряємо, що пост доступний за збереженим blogPostId.\n\n> **JSONPlaceholder нюанс:** POST /posts повертає `id: 101`, але GET /posts/101 → 404 (дані не зберігаються). Pre-request автоматично використовує `id=1` як fallback. У реальному API такого не було б.\n\n**Теми:** GET, JSON Schema, Chai (.to.be.a), Collection variables."
+					}
+				},
+				{
+					"name": "HW 9.5 — POST /comments (коментар до поста)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо дані коментаря",
+									"pm.collectionVariables.set(\"commentEmail\", qa.randomEmail());",
+									"console.log(\"Коментує:\", pm.collectionVariables.get(\"commentEmail\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.4 — Додати коментар",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Завдання:",
+									"//   1. Async тест (з done()): перевір що автор (blogUserId) існує",
+									"//      Зроби GET /users/{{blogUserId}} через pm.sendRequest і перевір статус 200",
+									"//   2. Перевір статус відповіді на POST 201",
+									"//   3. Chai: поле postId у відповіді === parseInt(pm.collectionVariables.get(\"blogPostId\"))",
+									"//   4. Збережи id коментаря у \"blogCommentId\"",
+									"",
+									"// ── Pre-check: автор існує ──────────────────────────────────",
+									"pm.test(\"✅ 9.4 — Async: автор існує перед коментуванням\", function (done) {",
+									"    const userId  = pm.collectionVariables.get(\"blogUserId\");",
+									"    const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+									"    // TODO: pm.sendRequest(url, function(err, res) { ... done(); })",
+									"    // Без done() тест буде зеленим навіть якщо перевірка провалена — не забудь done()!",
+									"    done(); // TODO: замінити цей рядок реальним sendRequest",
+									"});",
+									"",
+									"// ── Основні перевірки ────────────────────────────────────────",
+									"pm.test(\"✅ 9.4 — Статус 201\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.4 — postId у коментарі відповідає blogPostId\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.4 — Збережено blogCommentId\", function () {",
+									"    const id = pm.response.json().id;",
+									"    // TODO: pm.collectionVariables.set(\"blogCommentId\", id.toString())",
+									"    console.log(\"💬 blogCommentId =\", id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments"
+							]
+						},
+						"description": "**Крок 4/6.** Додаємо коментар до нашого поста.\n\n> 🔍 **Async pre-check:** перед POST виконуємо `pm.sendRequest` всередині тест-скрипта, щоб переконатись що автор існує. Без параметра `done` тест завжди зелений — навіть якщо assertion всередині кидає помилку. Завжди передавай `done` для async-тестів!\n\n**Теми:** POST, pm.sendRequest, done(), Chai, Collection variables.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postId\": {{blogPostId}},\n    \"name\":   \"QA тест-коментар\",\n    \"email\":  \"{{commentEmail}}\",\n    \"body\":   \"Автоматизований коментар до поста {{blogPostId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.6 — PATCH /posts (редагування публікації)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо новий заголовок зі збереженням старого як основи",
+									"const oldTitle = pm.collectionVariables.get(\"blogTitle\") || \"Пост\";",
+									"const updated  = \"[Edited] \" + oldTitle.replace(\"[QA Test] \", \"\") + \" — \" + Date.now();",
+									"pm.collectionVariables.set(\"updatedTitle\", updated);",
+									"console.log(\"Старий заголовок:\", oldTitle);",
+									"console.log(\"Новий заголовок:\", updated);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.5 — Відредагувати заголовок поста",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// PATCH — часткове оновлення: змінюємо тільки title, решта не змінюється.",
+									"// Завдання:",
+									"//   1. Перевір статус 200",
+									"//   2. Chai: title у відповіді === pm.collectionVariables.get(\"updatedTitle\")",
+									"//   3. Chai: поле id НЕ змінилось (відповідає blogPostId)",
+									"//   4. Chai: поле userId НЕ змінилось (відповідає blogUserId)",
+									"//   Підказка: PATCH повертає об'єкт з усіма полями, не тільки зміненими",
+									"",
+									"pm.test(\"✅ 9.5 — Статус 200\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.5 — Title оновлено до нового значення\", function () {",
+									"    // TODO: pm.expect(pm.response.json().title).to.eql(...)",
+									"});",
+									"",
+									"pm.test(\"✅ 9.5 — id і userId залишились незмінними\", function () {",
+									"    const json = pm.response.json();",
+									"    // TODO: два assertions — id та userId",
+									"});",
+									"",
+									"qa.logResponse(\"9.5 PATCH post\", pm.response);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 5/6.** Редагуємо заголовок поста (PATCH — часткове оновлення).\n\n> Ключова відмінність PATCH від PUT: PATCH змінює тільки передані поля, PUT замінює увесь ресурс. Тут ми перевіряємо це явно — `id` і `userId` повинні залишитись незмінними.\n\n**Теми:** PATCH, Chai, Collection variables, qa helpers.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"{{updatedTitle}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.7 — DELETE /posts (видалення)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ═══════════════════════════════════════════════════════════════",
+									"// ✏️  КРОК 9.6 — Видалити пост (cleanup)",
+									"// ═══════════════════════════════════════════════════════════════",
+									"// Завдання:",
+									"//   1. Перевір статус 200",
+									"//   2. Перевір що тіло відповіді — порожній об'єкт {}",
+									"//      pm.expect(pm.response.json()).to.eql({})",
+									"",
+									"pm.test(\"✅ 9.6 — Статус 200\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"pm.test(\"✅ 9.6 — Тіло відповіді є порожнім {}\", function () {",
+									"    // TODO",
+									"});",
+									"",
+									"// ── Підсумок флоу ────────────────────────────────────────────",
+									"qa.logResponse(\"9.6 DELETE post\", pm.response);",
+									"console.log(\"═══════════════════════════════════════════\");",
+									"console.log(\"🏁 Флоу завершено\");",
+									"console.log(\"   Автор:      \", pm.collectionVariables.get(\"blogUserName\"));",
+									"console.log(\"   Post ID:    \", pm.collectionVariables.get(\"blogPostId\"));",
+									"console.log(\"   Comment ID: \", pm.collectionVariables.get(\"blogCommentId\"));",
+									"console.log(\"═══════════════════════════════════════════\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 6/6.** Видаляємо пост — завершення флоу.\n\n> Цей крок виконується завжди: або в штатному порядку після 9.5, або через `setNextRequest` з 9.2 якщо публікація не вдалась.\n\n**Теми:** DELETE, Chai, qa helpers, підсумкове логування."
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Helpers — доступні в усіх запитах через bare assignment (без var/let/const).",
+					"// Саме завдяки відсутності 'var' ці функції стають глобальними в sandbox'і.",
+					"// Спробуй: у будь-якому test-скрипті виклич qa.randomEmail() або qa.randomInt(1, 10).",
+					"qa = {",
+					"    randomEmail: () => `qa+${Date.now()}@test.com`,",
+					"    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,",
+					"    logResponse: (label, res) => console.log(`[${label}] ${res.code} ${res.status} — ${res.responseTime}ms`),",
+					"    extractAndStore: (key, jsonPath) => {",
+					"        const value = jsonPath.split('.').reduce((o, k) => o && o[k], pm.response.json());",
+					"        pm.collectionVariables.set(key, value);",
+					"        console.log(`Збережено ${key} = ${value}`);",
+					"        return value;",
+					"    }",
+					"};"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://jsonplaceholder.typicode.com",
+			"type": "string"
+		},
+		{
+			"key": "apiToken",
+			"value": "student-demo-token",
+			"type": "string"
+		},
+		{
+			"key": "blogUserId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "blogUserName",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogPostId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "blogCommentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogTitle",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogBody",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "updatedTitle",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "commentEmail",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

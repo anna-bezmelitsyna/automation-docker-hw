@@ -1,0 +1,703 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-0000-4000-8000-000000000003",
+		"name": "JSONPlaceholder Lecture 3 (QA Methodology & Pro Features)",
+		"description": "Третя лекція. Фокус не на 'як натиснути кнопку Postman', а на 'як стати сильним API-тестувальником'.\n\nСтруктура:\n1. Що тестувати в API — чек-лист видів перевірок\n2. Negative & edge cases — на практиці\n3. Best practices організації колекцій\n4. Secrets management (Vault, secret variables)\n5. OpenAPI / Swagger import & API Builder\n6. Performance testing (вбудований у Postman v10+)\n7. Postbot — AI-помічник\n8. Forking & Pull Requests — командна робота\n\nПередумова: пройдено Lecture 1 та Lecture 2.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Що тестувати в API (чек-лист)",
+			"description": "Перш ніж писати тести — зрозумійте, ЩО ви перевіряєте. Шість категорій, які покривають реальний API:\n\n┌─────────────────┬──────────────────────────────────────────────────────┐\n│ Категорія       │ Що перевіряємо                                       │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Positive        │ Happy path. Запит з валідними даними → очікувана     │\n│                 │ відповідь, правильна структура, правильні значення.  │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Negative        │ Невалідні дані, відсутні поля, не той метод, не той  │\n│                 │ Content-Type. Перевіряємо КОДИ ПОМИЛОК (400/401/...) │\n│                 │ та ПОВІДОМЛЕННЯ ПРО ПОМИЛКУ.                         │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Boundary        │ Граничні значення: 0, -1, MAX_INT, порожній рядок,   │\n│                 │ дуже довгий рядок, null, undefined, емодзі, лапки.   │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Auth            │ Без токена → 401. З простроченим → 401. З чужим →    │\n│                 │ 403. З правильним → 200.                             │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Idempotency     │ POST двічі — два ресурси. PUT/DELETE двічі — той     │\n│                 │ самий результат. GET ніколи не змінює стан.          │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Contract        │ Структура відповіді відповідає JSON Schema /         │\n│                 │ OpenAPI. Типи полів, обов'язкові поля, формати.      │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Performance     │ Час відповіді < N мс. RPS витримує очікуване         │\n│                 │ навантаження.                                        │\n├─────────────────┼──────────────────────────────────────────────────────┤\n│ Security        │ SQL injection, XSS, виток токенів у відповіді,       │\n│                 │ rate limiting, CORS, mass assignment.                │\n└─────────────────┴──────────────────────────────────────────────────────┘\n\nПравило великого пальця: на кожен endpoint мінімум 5 тестів — 1 positive, 2 negative, 1 auth, 1 contract.",
+			"item": [
+				{
+					"name": "1.1 Приклад: 6 типів тестів на один endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Один запит — кілька типів перевірок. Показовий приклад.",
+									"const post = pm.response.json();",
+									"",
+									"// === POSITIVE ===",
+									"pm.test(\"[Positive] Статус 200\", () => pm.response.to.have.status(200));",
+									"pm.test(\"[Positive] Повернувся пост id=1\", () => {",
+									"    pm.expect(post.id).to.eql(1);",
+									"});",
+									"",
+									"// === CONTRACT ===",
+									"pm.test(\"[Contract] Структура відповідає схемі\", () => {",
+									"    pm.response.to.have.jsonSchema({",
+									"        type: \"object\",",
+									"        required: [\"id\", \"userId\", \"title\", \"body\"],",
+									"        properties: {",
+									"            id: { type: \"integer\" },",
+									"            userId: { type: \"integer\" },",
+									"            title: { type: \"string\" },",
+									"            body: { type: \"string\" }",
+									"        }",
+									"    });",
+									"});",
+									"",
+									"// === BOUNDARY ===",
+									"pm.test(\"[Boundary] title не порожній і не довший за 500 символів\", () => {",
+									"    pm.expect(post.title.length).to.be.above(0);",
+									"    pm.expect(post.title.length).to.be.below(500);",
+									"});",
+									"",
+									"// === PERFORMANCE ===",
+									"pm.test(\"[Performance] Відповідь < 2000 мс\", () => {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"// === SECURITY ===",
+									"pm.test(\"[Security] Відповідь не містить службових полів (password, token)\", () => {",
+									"    const raw = pm.response.text().toLowerCase();",
+									"    pm.expect(raw).to.not.include(\"password\");",
+									"    pm.expect(raw).to.not.include(\"secret\");",
+									"});",
+									"",
+									"// === HEADERS ===",
+									"pm.test(\"[Headers] Content-Type правильний\", () => {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Показовий приклад: один запит — шість різних типів перевірок. Зверніть увагу на префікси у назвах тестів [Positive]/[Contract]/[Boundary]/... — це гарна практика для читабельності у Test Results."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Negative & edge cases (на практиці)",
+			"description": "Реальні приклади негативних і граничних кейсів. Ці тести знаходять баги у 80% випадків, коли positive-тести вже зелені.",
+			"item": [
+				{
+					"name": "2.1 GET неіснуючого ресурсу → 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Статус 404 для неіснуючого id\", () => {",
+									"    pm.expect(pm.response.code).to.eql(404);",
+									"});",
+									"",
+									"pm.test(\"Тіло відповіді — порожній об'єкт або повідомлення\", () => {",
+									"    // JSONPlaceholder повертає {} на 404, реальний API має повертати щось типу",
+									"    // { error: 'Not Found', message: 'Post 99999 does not exist' }",
+									"    pm.expect(pm.response.json()).to.be.an(\"object\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/99999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"99999"
+							]
+						},
+						"description": "Класичний negative тест: запит ресурсу, якого не існує. API має відповісти 404, а не 200 з порожнім тілом, не 500, і не виключенням."
+					},
+					"response": []
+				},
+				{
+					"name": "2.2 POST з відсутнім обов'язковим полем",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// JSONPlaceholder — fake API, тож приймає будь-що. У реальному API",
+									"// очікуваний результат: 400 Bad Request з повідомленням про відсутнє поле.",
+									"",
+									"console.log(\"Реальний API мав би повернути 400. JSONPlaceholder повернув:\", pm.response.code);",
+									"",
+									"// Якби це був реальний API:",
+									"// pm.test(\"Статус 400 при відсутньому title\", () => {",
+									"//     pm.expect(pm.response.code).to.eql(400);",
+									"//     pm.expect(pm.response.json().errors).to.include.something.with.property('field', 'title');",
+									"// });"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"body\": \"Тіло без title\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Тест відсутнього обов'язкового поля. Real-world API має повернути 400 з детальним повідомленням про те, ЩО саме не так."
+					},
+					"response": []
+				},
+				{
+					"name": "2.3 POST з невалідним типом даних",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// userId має бути integer, а ми передали string.",
+									"// Очікувано: 400 з повідомленням 'userId must be integer'.",
+									"console.log(\"Статус:\", pm.response.code);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test\",\n    \"body\": \"Test\",\n    \"userId\": \"це-не-число\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Перевірка валідації типів. Сильний API має повертати 400, а не намагатися сконвертувати або проігнорувати."
+					},
+					"response": []
+				},
+				{
+					"name": "2.4 Boundary — дуже довгий рядок",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо рядок з 10 000 символів.",
+									"pm.variables.set(\"longString\", \"А\".repeat(10000));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"console.log(\"Довжина title у відповіді:\", pm.response.json().title.length);",
+									"// Реальний API має або обрізати, або повернути 400.",
+									"// Що НЕ ОК — 500 (сервер впав) або timeout."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"{{longString}}\",\n    \"body\": \"Test\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Boundary test: 10 000 символів у title. Якщо API не має ліміту — рано чи пізно повалить базу. Якщо має — повинен повертати 400 з повідомленням про максимальну довжину."
+					},
+					"response": []
+				},
+				{
+					"name": "2.5 Спецсимволи та емодзі",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Сервер не зламався на спецсимволах\", () => {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"pm.test(\"Юнікод збережено без втрат\", () => {",
+									"    const title = pm.response.json().title;",
+									"    pm.expect(title).to.include(\"🚀\");",
+									"    pm.expect(title).to.include(\"О'Брайен\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"🚀 О'Брайен <script>alert(1)</script> привіт\",\n    \"body\": \"\\\"Лапки\\\" та \\\\слеші\\\\\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Тест на UTF-8, апострофи, HTML-теги, лапки, слеші. Класичні місця, де є баги: некоректна кодування, SQL injection, XSS, обрізання на 4-байтових емодзі."
+					},
+					"response": []
+				},
+				{
+					"name": "2.6 Auth — без обов'язкового токена → 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Без авторизації → 401\", () => {",
+									"    pm.expect(pm.response.code).to.eql(401);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/basic-auth",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"basic-auth"
+							]
+						},
+						"description": "postman-echo.com/basic-auth — endpoint, який вимагає Basic Auth (postman/password). Без header'а Authorization завжди повертає 401. Реальний приклад захищеного ресурсу.\n\nЩоб побачити 200 — додайте у вкладку Authorization тип Basic Auth з логіном 'postman' і паролем 'password'."
+					},
+					"response": []
+				},
+				{
+					"name": "2.7 Idempotency — PUT двічі",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// PUT має бути ідемпотентним: викликати його 1, 2, 100 разів —",
+									"// результат однаковий, ресурс у тому самому стані.",
+									"//",
+									"// На відміну від POST: POST двічі = два різних ресурси.",
+									"",
+									"pm.test(\"PUT повернув очікуваний стан\", () => {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().title).to.eql(\"Idempotency test\");",
+									"});",
+									"",
+									"console.log(\"Запустіть цей запит 2-3 рази. Результат завжди однаковий — це і є idempotency.\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"title\": \"Idempotency test\",\n    \"body\": \"...\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "PUT, DELETE — idempotent. GET, HEAD — safe (нічого не змінюють). POST, PATCH — НЕ idempotent. Це не просто теорія REST: бекенд, який порушує це правило, ламає retry-логіку клієнтів."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Best practices організації колекцій",
+			"description": "Через півроку у колекції 200 запитів і ніхто не пам'ятає що де. Як з цим жити:\n\n━━━ NAMING ━━━\n✓ 'GET /posts — list all'\n✗ 'Request 47', 'New Request Copy 3'\n\nФормат: [METHOD] /path — короткий опис\nЯкщо в проєкті багато ендпоінтів — додати префікс модуля: '[Users] GET /users/:id'\n\n━━━ FOLDERS ━━━\n✓ По фічах / ресурсах: Auth/, Users/, Posts/, Comments/\n✗ По типах: GET/, POST/, DELETE/\n\nГлибина — не більше 3 рівнів. Інакше навігація стає пеклом.\n\n━━━ README ЗАПИТ ━━━\nПерший запит у колекції — порожній, з назвою '📖 README' і повним описом у description: про що колекція, як налаштувати environment, які preconditions, кого питати.\n\n━━━ VERSIONING ━━━\n• Підтримка через форки (див. розділ 8)\n• У назві колекції вказувати API version: 'Users API v2'\n• Експортувати JSON у git раз на спринт — для audit trail\n\n━━━ COMMENTS У КОДІ ━━━\n• Кожен нетривіальний тест має коментар 'що' і 'чому'\n• console.log() прибрати з тестів перед мержем — залишити тільки console.warn/error\n\n━━━ ВИДАЛЯТИ DEAD ENDPOINTS ━━━\nЯкщо запит не запускали 6 місяців — він мертвий. Видаляйте без жалю. Git history збереже.\n\n━━━ EXAMPLE НА КОЖЕН ЗАПИТ ━━━\nЗберігайте останню успішну відповідь як 'example' (Save Response → Save as example). Це робить:\n• Авто-документацію осмисленою\n• Mocks готовими 'з коробки'\n• Code review набагато простішим",
+			"item": [
+				{
+					"name": "📖 README",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://example.com",
+							"protocol": "https",
+							"host": [
+								"example",
+								"com"
+							]
+						},
+						"description": "# Demo Project API Tests\n\n**Власник:** QA Team (#qa-api в Slack)\n**Бекенд:** https://api.example.com\n**Документація API:** https://docs.example.com\n\n## Як налаштувати\n\n1. Імпортуйте environment 'Demo API DEV' з папки environments/\n2. У змінній `apiToken` встановіть свій токен з https://app.example.com/settings/api\n3. Запустіть запит 'Auth → POST /auth/login' для отримання сесії\n\n## Структура\n\n- 1. Auth — логін, refresh, logout\n- 2. Users — CRUD користувачів\n- 3. Posts — CRUD постів\n- 4. Smoke tests — для запуску у CI\n\n## Запуск у CI\n\n```bash\nnewman run collection.json -e env.dev.json --folder \"Smoke tests\" -r htmlextra\n```\n\n## Контакти\n\n• Питання по тестах: @qa-lead\n• Питання по API: @backend-lead"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Secrets management",
+			"description": "Реальний кейс з продакшену: розробник закоммітив environment-файл з продакшен-токеном у git → токен потрапив у публічне дзеркало → за 12 годин $30k витрат на AWS від чужих майнерів.\n\n━━━ ПРАВИЛО №1: НЕ COMMIT'ИТИ СЕКРЕТИ ━━━\n.gitignore:\n  environments/*.prod.postman_environment.json\n  environments/*.local.postman_environment.json\n\n━━━ ТИПИ ЗМІННИХ ━━━\n• default — звичайна, відображається відкрито\n• secret — у UI показана як ●●●●●●, у логах теж\n\nЗробити змінну secret: вкладка Variables → колонка Type → випадайка 'secret'.\n\nУВАГА: 'secret' тип ХОВАЄ значення у UI, але воно ВСЕ ОДНО зберігається у JSON-файлі environment у відкритому вигляді при експорті! Не плутайте 'secret' з шифруванням.\n\n━━━ POSTMAN VAULT (з v10) ━━━\nЛокальне сховище секретів, прив'язане до пристрою. Значення:\n• Ніколи не синхронізуються у хмару\n• Не експортуються\n• Доступні через vault:keyName синтаксис: {{vault:apiToken}}\n\nДоступ: ліва панель → іконка замочка (Vault).\n\n━━━ DO ━━━\n✓ Використовуйте Vault для особистих токенів\n✓ Secret type — для команди (синхронізуються, але приховані у UI)\n✓ Для CI: --env-var \"apiToken=$SECRET\" з GitHub Secrets / GitLab variables\n✓ Ротуйте токени після демо / випадкового шарінгу екрану\n\n━━━ DON'T ━━━\n✗ Не зберігайте продакшен-токени у Postman cloud workspace\n✗ Не залишайте секрети у скриптах: console.log(pm.environment.get('token'))\n✗ Не комміттайте environment-файли з продом\n✗ Не використовуйте один токен у dev/staging/prod",
+			"item": [
+				{
+					"name": "4.1 Використання secret-змінної",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// apiToken у нашому environment має тип 'secret'.",
+									"// Postman підставляє значення, але у Console його не відображає.",
+									"console.log(\"Токен використано (значення приховано):\", pm.environment.get(\"apiToken\") ? \"✓\" : \"✗\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vault:apiToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Запит використовує {{vault:apiToken}} — синтаксис для звернення до Postman Vault. Якщо у Vault є запис apiToken — підставиться.\n\nПеремкніть на {{apiToken}} (звичайна змінна з environment) — побачите, що звичайні secret-змінні теж працюють, але менш безпечно."
+					},
+					"response": []
+				},
+				{
+					"name": "4.2 Перевірка, що токен НЕ протікає у відповідь",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Захист від помилок бекенду: іноді сервер ехом повертає всі headers,",
+									"// включаючи Authorization. Слідкуйте, щоб ваш токен не з'являвся у відповіді.",
+									"",
+									"const token = pm.environment.get(\"apiToken\") || pm.variables.get(\"apiToken\");",
+									"const responseText = pm.response.text();",
+									"",
+									"pm.test(\"Токен НЕ протікає у відповідь\", () => {",
+									"    if (token) {",
+									"        pm.expect(responseText).to.not.include(token);",
+									"    }",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{apiToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Перевіряємо, що сервер не повертає наш токен у відповіді. Якщо повертає — це security incident, треба ескалувати на бекенд."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. OpenAPI / Swagger import & API Builder",
+			"description": "Замість писати колекцію руками — імпортуйте з OpenAPI/Swagger специфікації. Postman згенерує запити з усіма параметрами, схемами і прикладами автоматично.\n\n━━━ ЯК ІМПОРТУВАТИ ━━━\n1. Файл або URL: File → Import → вкажіть .yaml/.json специфікацію або URL\n2. Postman пропонує: 'Generate Collection from this API'\n3. Готово — папки за тегами OpenAPI, запити за operations, у тілі — приклад з examples\n\n━━━ ПРИКЛАД ДЛЯ ДЕМО ━━━\nКласичний Petstore Swagger:\nhttps://petstore.swagger.io/v2/swagger.json\n\nІмпортуйте — отримаєте готову колекцію з 20+ запитами.\n\n━━━ API BUILDER (Postman v10+) ━━━\nОкрема сутність 'API' у Postman, що тримає:\n• Специфікацію (OpenAPI/AsyncAPI/GraphQL)\n• Пов'язані колекції (тестові, моки, документацію)\n• Версії\n• Validation: Postman показує, де колекція розходиться зі специфікацією\n\nЯк створити: ліва панель → APIs → New API → завантажити спеку.\n\n━━━ ЧОМУ ЦЕ ВАЖЛИВО ━━━\n• Контрактне тестування 'безкоштовно': перевіряйте кожну відповідь проти OpenAPI\n• Спека є джерелом істини: змінилась спека → оновили колекцію в один клік\n• Розробник пише endpoint → автогенерує спеку → QA одразу має оновлену колекцію\n\n━━━ ЕКСПОРТ ━━━\nPostman також МОЖЕ ЕКСПОРТУВАТИ колекцію назад у OpenAPI 3.0. Корисно, коли колекція з'явилась раніше за специфікацію.",
+			"item": [
+				{
+					"name": "5.1 Демо-URL для імпорту",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://petstore.swagger.io/v2/swagger.json",
+							"protocol": "https",
+							"host": [
+								"petstore",
+								"swagger",
+								"io"
+							],
+							"path": [
+								"v2",
+								"swagger.json"
+							]
+						},
+						"description": "Це класичний Petstore — стандартний приклад OpenAPI/Swagger.\n\nСкопіюйте URL → у Postman File → Import → Link → вставте → 'Generate Collection from this API'.\n\nЗа 5 секунд отримаєте колекцію з ~20 запитів: pet/, store/, user/ — з усіма параметрами, схемами, прикладами.\n\nЦе ваш робочий шаблон, коли в проєкті є Swagger."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Performance testing (built-in)",
+			"description": "З Postman v10.18+ Collection Runner має режим Performance — вбудоване навантажувальне тестування. Не замінить k6/JMeter для серйозних навантажень, але для smoke load tests / API stress на dev — ідеально.\n\n━━━ ЯК ЗАПУСТИТИ ━━━\n1. Клік на колекції → Run\n2. Зверху у Collection Runner перемкніть на вкладку 'Performance' (поряд з 'Functional')\n3. Налаштуйте:\n   • Virtual users — кількість 'одночасних' користувачів (1-100)\n   • Test duration — скільки часу ганяти (хвилини)\n   • Load profile — Fixed (постійне навантаження) або Ramp up (поступове)\n4. Натисніть Run\n\n━━━ ЩО ПОКАЖЕ ━━━\n• Графік RPS (requests per second) у реальному часі\n• Графік середнього часу відповіді (latency)\n• Error rate — % запитів, що впали\n• 90th, 95th, 99th percentile часу відповіді\n• Розбивка по конкретних запитах: який повільніший за інші\n\n━━━ ЯК ЧИТАТИ РЕЗУЛЬТАТИ ━━━\n• Якщо latency стабільна і error rate = 0 — API витримує\n• Якщо latency зростає з часом — підозра на memory leak або повільну деградацію БД\n• Якщо error rate стрибає на високому навантаженні — rate limiting або вичерпання connection pool\n• 99th percentile — реалістичний показник 'найгіршого досвіду' користувача\n\n━━━ ОБМЕЖЕННЯ ━━━\n• Виконується ЛОКАЛЬНО з вашої машини — не повторюйте на офісному WiFi\n• Не для production — тільки dev/staging з дозволу команди\n• Максимум 100 virtual users — для більшого треба k6/JMeter/Locust",
+			"item": [
+				{
+					"name": "6.1 Простий запит для performance run",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Цей запит ідеальний для Performance Runner — швидкий, без побічних ефектів.",
+									"pm.test(\"Статус 200\", () => pm.response.to.have.status(200));",
+									"pm.test(\"Відповідь < 1000 мс\", () => {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{$randomInt}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{$randomInt}}"
+							]
+						},
+						"description": "Запустіть цей запит через Run collection → Performance з налаштуваннями: 10 virtual users, 30 секунд, Fixed load. Подивіться на графіки.\n\nUTM: для performance-тестування не використовуйте JSONPlaceholder як ціль довго — це безкоштовний публічний сервіс, його легко перевантажити."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Postbot — AI-помічник",
+			"description": "Postbot — вбудований у Postman AI-асистент (Postman 10.13+). Іконка у нижньому правому куті — фіолетова зірочка. Безкоштовно для всіх акаунтів з лімітом.\n\n━━━ ЩО ВМІЄ ━━━\n• Генерувати тести для отриманої відповіді одним кліком\n• Пояснювати, що означає response (корисно для початківців)\n• Створювати документацію до колекції\n• Допомагати з регулярками і скриптами\n• Парсити складні JSON-відповіді у потрібні структури\n• Підказувати, як виправити червоний тест\n\n━━━ ПРАКТИЧНІ ПРОМПТИ ━━━\n\nПісля будь-якого GET-запиту відкрийте Postbot і спробуйте:\n\n  → 'Add tests for this response'\n     Згенерує 5-10 готових pm.test() — статус, поля, типи. Можна одразу копіювати у Tests.\n\n  → 'Visualize this response as a table'\n     Згенерує template для pm.visualizer.set().\n\n  → 'Explain what this response means'\n     Розжує JSON по полях — корисно для онбордингу.\n\n  → 'Document this request'\n     Напише гарний description.\n\n  → 'Why is my test failing?'\n     Подивиться на test code + actual response → пояснить.\n\n  → 'Generate negative test cases for this endpoint'\n     Підкаже edge cases, про які ви не подумали.\n\n━━━ ЛІМІТИ ━━━\nFree tier: ~50 запитів на день. Pro/Enterprise — більше.\n\n━━━ КОЛИ НЕ ВАРТО ВИКОРИСТОВУВАТИ ━━━\n• Не давайте Postbot реальні продакшен-токени у промптах\n• Не покладайтесь сліпо на згенерований код — review обов'язковий\n• Складна бізнес-логіка — Postbot не знає вашого домену, тести будуть поверхневими",
+			"item": [
+				{
+					"name": "7.1 Запит для тренування з Postbot",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Відкрийте Postbot (фіолетова зірочка внизу праворуч),",
+									"// і спробуйте промпт: 'Add tests for this response'.",
+									"// Згенеровані тести вставте сюди і подивіться, наскільки вони адекватні."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Простий запит з насиченою відповіддю (адреса з координатами, компанія, контакти) — ідеально, щоб погратися з Postbot.\n\nПромпти для практики:\n1. 'Add tests for this response'\n2. 'Visualize address coordinates on a map'\n3. 'Generate a JSON schema for this response'\n4. 'What edge cases should I test for this endpoint?'"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Forking & Pull Requests (командна робота)",
+			"description": "Postman підтримує git-подібний workflow для командної роботи з колекціями. Якщо вас більше одного у проєкті — це обов'язково.\n\n━━━ КОНЦЕПЦІЯ ━━━\nГоловна колекція — у Team workspace. Кожен робить fork у свій Personal workspace, працює там, потім робить Pull Request у головну. Reviewer перевіряє і мерджить. Все як у git, але через UI Postman.\n\n━━━ ЯК ЗРОБИТИ FORK ━━━\n1. Клік на колекції → 'Create a fork'\n2. Назва форка + workspace, куди форкнути\n3. Postman створює копію — змінюйте, додавайте запити, експериментуйте\n4. Головна колекція залишається недоторканою\n\n━━━ ЯК ЗРОБИТИ PULL REQUEST ━━━\n1. У форку: '...' → 'Create pull request'\n2. Заголовок + опис ('Що змінив і чому')\n3. Reviewers — мінімум 1 колега\n4. Submit\n5. Reviewer бачить diff (так! Postman показує diff між колекціями), коментує, approve/request changes\n6. Після approve — Merge\n\n━━━ ЯК ПІДТЯГНУТИ ЗМІНИ З ГОЛОВНОЇ ━━━\nЯкщо головна колекція оновилась, поки ви працювали у форку:\n• У форку: '...' → 'Pull changes'\n• Postman показує конфлікти (якщо є) → вирішуєте вручну\n\n━━━ FORK ДЛЯ ЕКСПЕРИМЕНТІВ ━━━\nДля одноразових експериментів краще робити форк, ніж правити головну. Не подобається — видалили форк, головна не постраждала.\n\n━━━ COMMENTS НА ОКРЕМИХ ЗАПИТАХ ━━━\nПравий клік на запиті → 'Add comment'. Коментар видно всім у workspace. Корисно для:\n• 'Цей тест нестабільний, треба переписати'\n• '@john, тут потрібен твій погляд'\n• 'Не запускати у prod — створює реальні замовлення'\n\n━━━ ACTIVITY FEED ━━━\nНа рівні колекції є вкладка 'Changelog' — git log-подібний список усіх змін з авторами і таймстампами. Корисно для аудиту.\n\n━━━ ROLES ━━━\nДля Team/Enterprise workspaces є ролі: Admin / Editor / Viewer. Можна заборонити junior'ам пушити напряму у головну колекцію — тільки через PR.",
+			"item": [
+				{
+					"name": "8.1 Цей запит можна форкнути та змінити",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Зробіть форк колекції у свій Personal workspace, додайте сюди новий тест (наприклад, перевірку Content-Length), потім спробуйте Pull Request у головну колекцію.\n\nЦе найкращий спосіб попрактикуватись — без ризику зламати у когось."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://jsonplaceholder.typicode.com",
+			"type": "string"
+		},
+		{
+			"key": "apiToken",
+			"value": "demo-token-12345",
+			"type": "secret"
+		}
+	]
+}

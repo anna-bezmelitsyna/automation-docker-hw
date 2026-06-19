@@ -1,0 +1,1445 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-0000-4000-8000-000000000001",
+		"name": "JSONPlaceholder Lecture",
+		"description": "Навчальна колекція для лекції по Postman.\n\nВсі запити працюють з безкоштовним публічним API https://jsonplaceholder.typicode.com\n\nЦе fake REST API: GET-запити повертають реальні дані, а POST/PUT/PATCH/DELETE лише імітуються (нічого не зберігається на сервері), але повертають коректну відповідь — ідеально для навчання.\n\nСтруктура колекції:\n1. HTTP методи (CRUD)\n2. Параметри запиту\n3. Headers\n4. Змінні (Variables)\n5. Pre-request scripts та ланцюжки запитів\n6. Тести та об'єкт pm\n7. Chai assertions\n8. JSON Schema validation\n\nПорада: відкрийте Postman Console (View → Show Postman Console або Alt+Ctrl+C), щоб бачити вивід console.log.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. HTTP методи (CRUD)",
+			"description": "Базові HTTP-методи на прикладі ресурсу /posts. Кожен метод відповідає одній операції CRUD: Create, Read, Update, Delete.",
+			"item": [
+				{
+					"name": "GET — отримати всі пости",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// GET читає дані. Тіло запиту не потрібне.",
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Повертається масив зі 100 постів\", function () {",
+									"    const posts = pm.response.json();",
+									"    pm.expect(posts).to.be.an(\"array\");",
+									"    pm.expect(posts).to.have.lengthOf(100);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Отримати список усіх постів. Сервер повертає масив зі 100 об'єктів."
+					},
+					"response": []
+				},
+				{
+					"name": "GET — отримати пост за ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Повернувся пост з id = 1\", function () {",
+									"    pm.expect(pm.response.json().id).to.eql(1);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Отримати один конкретний пост. Число 1 у кінці URL — це path parameter (ідентифікатор ресурсу)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST — створити пост",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// POST створює новий ресурс. Дані передаються у тілі (Body → raw → JSON).",
+									"pm.test(\"Статус код 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Сервер повернув id нового поста\", function () {",
+									"    pm.expect(pm.response.json()).to.have.property(\"id\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Мій перший пост\",\n    \"body\": \"Текст поста, створеного через Postman\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Створити новий пост. Тіло запиту описує об'єкт, який ми хочемо створити. Сервер відповідає статусом 201 і повертає створений об'єкт з присвоєним id (101)."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT — повністю оновити пост",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// PUT замінює ресурс ПОВНІСТЮ — передаємо всі поля об'єкта.",
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Заголовок оновлено\", function () {",
+									"    pm.expect(pm.response.json().title).to.eql(\"Оновлений заголовок\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"title\": \"Оновлений заголовок\",\n    \"body\": \"Повністю новий текст поста\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "PUT використовується для повної заміни ресурсу. Передаємо всі поля об'єкта — навіть ті, що не змінюються."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH — частково оновити пост",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// PATCH оновлює ЛИШЕ передані поля. Решта залишається без змін.",
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Оновлено лише title, body залишився старим\", function () {",
+									"    const post = pm.response.json();",
+									"    pm.expect(post.title).to.eql(\"Тільки новий заголовок\");",
+									"    pm.expect(post).to.have.property(\"body\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Тільки новий заголовок\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "PATCH — часткове оновлення. Передаємо тільки ті поля, які треба змінити. На відміну від PUT, не потрібно надсилати весь об'єкт."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE — видалити пост",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// DELETE видаляє ресурс.",
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Видалити пост за ID. JSONPlaceholder імітує видалення і повертає порожнє тіло зі статусом 200."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Параметри запиту",
+			"description": "Три способи передати додаткові дані в URL: path parameters, query parameters та вкладені (nested) ресурси.",
+			"item": [
+				{
+					"name": "Path parameter — /posts/:id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Отримано пост за id з path\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().id).to.eql(5);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"5"
+							]
+						},
+						"description": "Path parameter — частина шляху URL, що ідентифікує конкретний ресурс. Тут число 5 — це id поста. У Postman path-параметр можна записати як :id, тоді він з'явиться у вкладці Params."
+					},
+					"response": []
+				},
+				{
+					"name": "Query parameters — /comments?postId=1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Усі коментарі належать postId = 1\", function () {",
+									"    const comments = pm.response.json();",
+									"    pm.expect(comments).to.be.an(\"array\").that.is.not.empty;",
+									"    comments.forEach(function (comment) {",
+									"        pm.expect(comment.postId).to.eql(1);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/comments?postId=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments"
+							],
+							"query": [
+								{
+									"key": "postId",
+									"value": "1",
+									"description": "Фільтрувати коментарі за id поста"
+								}
+							]
+						},
+						"description": "Query parameters йдуть після знаку ? у форматі key=value. Зазвичай використовуються для фільтрації, сортування та пагінації. Кілька параметрів розділяються знаком &.\n\nРедагувати їх зручно у вкладці Params."
+					},
+					"response": []
+				},
+				{
+					"name": "Вкладений ресурс — /posts/1/comments",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Повернувся непорожній масив коментарів\", function () {",
+									"    pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1",
+								"comments"
+							]
+						},
+						"description": "Вкладений ресурс — коментарі, що належать конкретному посту. Результат той самий, що й /comments?postId=1, але виражений через ієрархію URL."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Headers",
+			"description": "Заголовки запиту (request headers) передають метадані: формат тіла, авторизацію, мову тощо.",
+			"item": [
+				{
+					"name": "Власні headers у запиті",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Заголовки запиту доступні через pm.request.headers",
+									"console.log(\"Headers запиту:\", pm.request.headers.toJSON());",
+									"",
+									"pm.test(\"Сервер повернув заголовок Content-Type\", function () {",
+									"    pm.response.to.have.header(\"Content-Type\");",
+									"});",
+									"",
+									"pm.test(\"Content-Type містить application/json\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Просимо сервер відповісти у форматі JSON"
+							},
+							{
+								"key": "X-Lecture-Demo",
+								"value": "postman-headers",
+								"description": "Власний заголовок для прикладу"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "У вкладці Headers можна додавати власні заголовки. Postman також автоматично додає службові headers (їх видно, якщо натиснути 'hidden').\n\nЗаголовки ВІДПОВІДІ дивимось у вкладці Headers панелі Response."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Змінні (Variables)",
+			"description": "Змінні дозволяють не дублювати значення. {{baseUrl}} — це collection variable, заданий на рівні колекції (вкладка Variables). Існують також environment, global та dynamic variables.",
+			"item": [
+				{
+					"name": "Collection variable {{baseUrl}}",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Прочитати значення змінної зі скрипта:",
+									"console.log(\"baseUrl =\", pm.collectionVariables.get(\"baseUrl\"));",
+									"",
+									"// Встановити змінну зі скрипта:",
+									"// pm.collectionVariables.set(\"myVar\", \"значення\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Запит з {{baseUrl}} відпрацював\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Замість того, щоб писати https://jsonplaceholder.typicode.com у кожному запиті, ми зберегли адресу у змінній baseUrl (вкладка Variables на рівні колекції) і підставляємо її як {{baseUrl}}.\n\nЯкщо API переїде на іншу адресу — досить змінити одне місце."
+					},
+					"response": []
+				},
+				{
+					"name": "Динамічні змінні ($random...)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Динамічні змінні Postman генерують нове значення при кожному запуску.",
+									"// Їх зручно використовувати прямо у тілі запиту: {{$randomFullName}} тощо.",
+									"// Зі скрипта значення можна отримати через replaceIn:",
+									"console.log(\"Випадкове ім'я:\", pm.variables.replaceIn(\"{{$randomFullName}}\"));",
+									"console.log(\"Випадковий email:\", pm.variables.replaceIn(\"{{$randomEmail}}\"));",
+									"console.log(\"GUID:\", pm.variables.replaceIn(\"{{$guid}}\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Пост створено з динамічними даними\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Пост від {{$randomFullName}}\",\n    \"body\": \"Контактний email: {{$randomEmail}}\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Динамічні змінні починаються з $ і генерують нове значення на кожен запуск: {{$randomFullName}}, {{$randomEmail}}, {{$randomInt}}, {{$guid}}, {{$timestamp}} та інші.\n\nКорисні, коли потрібні унікальні дані (наприклад, реєстрація нового користувача)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Pre-request scripts та ланцюжки запитів",
+			"description": "Pre-request script виконується ПЕРЕД відправкою запиту. Test script — ПІСЛЯ отримання відповіді. Разом вони дозволяють будувати ланцюжки: один запит готує дані для наступного.",
+			"item": [
+				{
+					"name": "Крок 1 — зберегти userId з відповіді",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Статус код 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Дістаємо значення з відповіді і зберігаємо у змінну колекції,",
+									"// щоб наступний запит міг ним скористатися.",
+									"const userId = pm.response.json().userId;",
+									"pm.collectionVariables.set(\"userId\", userId);",
+									"console.log(\"Збережено userId =\", userId);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Запитуємо пост і у test-скрипті дістаємо з відповіді userId. Зберігаємо його у collection variable через pm.collectionVariables.set().\n\nЦе перший крок ланцюжка запитів."
+					},
+					"response": []
+				},
+				{
+					"name": "Крок 2 — використати збережений userId",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Отримано користувача за збереженим userId\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const expectedId = Number(pm.collectionVariables.get(\"userId\"));",
+									"    pm.expect(pm.response.json().id).to.eql(expectedId);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Використовуємо змінну {{userId}}, яку зберіг попередній запит. Запустіть спершу 'Крок 1', потім цей запит — або обидва через Collection Runner."
+					},
+					"response": []
+				},
+				{
+					"name": "pm.sendRequest у pre-request",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// pm.sendRequest дозволяє надіслати допоміжний запит ПЕРЕД основним.",
+									"// Тут отримуємо випадковий пост і кладемо його id у змінну.",
+									"const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+									"const randomId = Math.floor(Math.random() * 100) + 1;",
+									"",
+									"pm.sendRequest(baseUrl + \"/posts/\" + randomId, function (err, res) {",
+									"    if (err) {",
+									"        console.log(\"Помилка sendRequest:\", err);",
+									"    } else {",
+									"        const post = res.json();",
+									"        pm.collectionVariables.set(\"preparedPostId\", post.id);",
+									"        console.log(\"Підготовлено postId =\", post.id);",
+									"    }",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Основний запит використав підготовлений id\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const expectedId = Number(pm.collectionVariables.get(\"preparedPostId\"));",
+									"    pm.expect(pm.response.json().id).to.eql(expectedId);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{preparedPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{preparedPostId}}"
+							]
+						},
+						"description": "pm.sendRequest() надсилає окремий запит зі скрипта (наприклад, для логіну або підготовки даних) без створення окремого запиту в колекції.\n\nТут pre-request обирає випадковий пост, а основний запит підтягує його id."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Тести та об'єкт pm",
+			"description": "Тести пишуться через pm.test(назва, функція). Усередині використовуємо об'єкт pm: pm.response, pm.request, pm.expect. Результати видно у вкладці Test Results.",
+			"item": [
+				{
+					"name": "Перевірка статус-коду",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Найпоширеніша перевірка — статус-код відповіді.",
+									"pm.test(\"Статус код дорівнює 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Можна перевірити за текстом статусу:",
+									"pm.test(\"Статус має назву OK\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"// Або перевірити, що код — один з допустимих:",
+									"pm.test(\"Код входить у список успішних\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Три способи перевірити статус-код: за числом, за текстом та через список допустимих значень."
+					},
+					"response": []
+				},
+				{
+					"name": "Перевірка тіла відповіді",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// pm.response.json() — розпарсене тіло відповіді як об'єкт.",
+									"const post = pm.response.json();",
+									"",
+									"pm.test(\"Тіло має очікувані поля\", function () {",
+									"    pm.expect(post).to.have.property(\"id\");",
+									"    pm.expect(post).to.have.property(\"title\");",
+									"    pm.expect(post).to.have.property(\"userId\");",
+									"});",
+									"",
+									"pm.test(\"id поста дорівнює 1\", function () {",
+									"    pm.expect(post.id).to.eql(1);",
+									"});",
+									"",
+									"// pm.response.text() — тіло як рядок.",
+									"pm.test(\"Тіло відповіді містить слово 'body'\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"body\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "pm.response.json() повертає тіло як JS-об'єкт, pm.response.text() — як рядок. Далі перевіряємо потрібні поля."
+					},
+					"response": []
+				},
+				{
+					"name": "Headers та час відповіді",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Є заголовок Content-Type\", function () {",
+									"    pm.response.to.have.header(\"Content-Type\");",
+									"});",
+									"",
+									"pm.test(\"Час відповіді менший за 2000 мс\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"// Корисні службові властивості відповіді:",
+									"console.log(\"Код:\", pm.response.code);",
+									"console.log(\"Статус:\", pm.response.status);",
+									"console.log(\"Час, мс:\", pm.response.responseTime);",
+									"console.log(\"Розмір:\", pm.response.responseSize);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Перевірка заголовків відповіді та часу її отримання (responseTime у мілісекундах) — базовий контроль продуктивності."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Chai assertions",
+			"description": "Postman використовує бібліотеку Chai для перевірок. Основа — pm.expect(значення).to.... Тут зібрані найчастіші конструкції.",
+			"item": [
+				{
+					"name": "equal vs eql (deep equal)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const post = pm.response.json();",
+									"",
+									"// .equal — строге порівняння (===). Підходить для примітивів.",
+									"pm.test(\".equal для примітивів\", function () {",
+									"    pm.expect(post.id).to.equal(1);",
+									"    pm.expect(post.userId).to.equal(1);",
+									"});",
+									"",
+									"// .eql — глибоке порівняння. Потрібне для об'єктів та масивів,",
+									"// бо два різні об'єкти з однаковим вмістом НЕ рівні через ===.",
+									"pm.test(\".eql для об'єктів\", function () {",
+									"    pm.expect({ id: 1, name: \"QA\" }).to.eql({ id: 1, name: \"QA\" });",
+									"});",
+									"",
+									"// .equal на об'єктах впаде — розкоментуйте, щоб показати помилку:",
+									"// pm.test(\"equal на об'єктах падає\", function () {",
+									"//     pm.expect({ id: 1 }).to.equal({ id: 1 });",
+									"// });"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": ".equal — строге порівняння (===), для примітивів. .eql — глибоке порівняння вмісту, для об'єктів та масивів."
+					},
+					"response": []
+				},
+				{
+					"name": "have.property та keys",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const post = pm.response.json();",
+									"",
+									"pm.test(\"Має властивість title\", function () {",
+									"    pm.expect(post).to.have.property(\"title\");",
+									"});",
+									"",
+									"pm.test(\"Властивість userId дорівнює 1\", function () {",
+									"    pm.expect(post).to.have.property(\"userId\", 1);",
+									"});",
+									"",
+									"pm.test(\"Об'єкт містить рівно ці ключі\", function () {",
+									"    pm.expect(post).to.have.keys(\"userId\", \"id\", \"title\", \"body\");",
+									"});",
+									"",
+									"pm.test(\"id — це число\", function () {",
+									"    pm.expect(post.id).to.be.a(\"number\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "have.property перевіряє наявність ключа (і за бажанням значення). have.keys перевіряє повний набір ключів. to.be.a перевіряє тип даних."
+					},
+					"response": []
+				},
+				{
+					"name": "include та match (regex)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const post = pm.response.json();",
+									"",
+									"// include — для рядків та масивів.",
+									"pm.test(\"Масив містить значення\", function () {",
+									"    pm.expect([1, 2, 3]).to.include(2);",
+									"});",
+									"",
+									"// deep.include — для об'єктів усередині масиву / часткового збігу.",
+									"pm.test(\"Об'єкт частково збігається\", function () {",
+									"    pm.expect(post).to.deep.include({ id: 1, userId: 1 });",
+									"});",
+									"",
+									"// match — перевірка за регулярним виразом.",
+									"pm.test(\"title не порожній (regex)\", function () {",
+									"    pm.expect(post.title).to.match(/.+/);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "include перевіряє входження елемента/підрядка. deep.include — частковий збіг об'єкта. match — перевірка за регулярним виразом."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. JSON Schema validation",
+			"description": "Замість перевірки кожного поля окремо можна описати очікувану структуру відповіді як JSON-схему і провалідувати всю відповідь одним тестом.",
+			"item": [
+				{
+					"name": "Валідація поста за схемою",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Описуємо очікувану структуру відповіді.",
+									"const postSchema = {",
+									"    \"type\": \"object\",",
+									"    \"required\": [\"userId\", \"id\", \"title\", \"body\"],",
+									"    \"properties\": {",
+									"        \"userId\": { \"type\": \"integer\" },",
+									"        \"id\": { \"type\": \"integer\" },",
+									"        \"title\": { \"type\": \"string\" },",
+									"        \"body\": { \"type\": \"string\" }",
+									"    }",
+									"};",
+									"",
+									"pm.test(\"Відповідь відповідає JSON-схемі поста\", function () {",
+									"    pm.response.to.have.jsonSchema(postSchema);",
+									"});",
+									"",
+									"// Спробуйте навмисно поламати схему (наприклад, title -> integer),",
+									"// щоб побачити, як тест падає."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "JSON Schema описує очікувані типи полів та обов'язкові ключі. pm.response.to.have.jsonSchema(schema) перевіряє всю відповідь одразу — зручно для контрактного тестування API."
+					},
+					"response": []
+				},
+				{
+					"name": "Валідація масиву користувачів",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Схема для масиву об'єктів: type 'array' з полем items.",
+									"const usersSchema = {",
+									"    \"type\": \"array\",",
+									"    \"items\": {",
+									"        \"type\": \"object\",",
+									"        \"required\": [\"id\", \"name\", \"email\"],",
+									"        \"properties\": {",
+									"            \"id\": { \"type\": \"integer\" },",
+									"            \"name\": { \"type\": \"string\" },",
+									"            \"email\": { \"type\": \"string\" }",
+									"        }",
+									"    }",
+									"};",
+									"",
+									"pm.test(\"Кожен користувач відповідає схемі\", function () {",
+									"    pm.response.to.have.jsonSchema(usersSchema);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users"
+							]
+						},
+						"description": "Для масиву схема має type 'array' та вкладене поле items, що описує структуру кожного елемента."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Типи тіла запиту (Body types)",
+			"description": "Раніше ми надсилали тільки raw JSON. У реальному житті бекенд приймає й інші формати: форми, файли, бінарні дані.\n\nДля цих демо використовуємо https://postman-echo.com — сервіс від Postman, що ехом повертає те, що ми йому надіслали. Ідеально, щоб перевірити 'а що саме пішло на сервер'.",
+			"item": [
+				{
+					"name": "9.1 application/x-www-form-urlencoded",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Поля форми долетіли до сервера\", function () {",
+									"    const form = pm.response.json().form;",
+									"    pm.expect(form.username).to.eql(\"qa-engineer\");",
+									"    pm.expect(form.role).to.eql(\"student\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "qa-engineer",
+									"type": "text"
+								},
+								{
+									"key": "role",
+									"value": "student",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "Класичний формат HTML-форм. Дані кодуються як query string у тілі: username=qa-engineer&role=student.\n\nContent-Type: application/x-www-form-urlencoded — Postman підставляє автоматично, вручну задавати НЕ треба."
+					},
+					"response": []
+				},
+				{
+					"name": "9.2 multipart/form-data (текстові поля)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Поля multipart-форми отримано\", function () {",
+									"    const form = pm.response.json().form;",
+									"    pm.expect(form.firstName).to.eql(\"Denys\");",
+									"    pm.expect(form.skills).to.eql(\"Postman, Newman\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "firstName",
+									"value": "Denys",
+									"type": "text"
+								},
+								{
+									"key": "skills",
+									"value": "Postman, Newman",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "multipart/form-data дозволяє в одному тілі надіслати і текст, і файли. Кожне поле обгорнуто у boundary-роздільник.\n\nКРИТИЧНО: НЕ задавайте Content-Type вручну! Postman автоматично згенерує його з правильним boundary. Якщо задасте свій — запит зламається, бо boundary не співпаде."
+					},
+					"response": []
+				},
+				{
+					"name": "9.3 multipart/form-data (з файлом)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Файл долетів до сервера\", function () {",
+									"    const files = pm.response.json().files;",
+									"    pm.expect(files).to.not.be.empty;",
+									"    console.log(\"Отримано файли:\", Object.keys(files));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "description",
+									"value": "Аватарка користувача",
+									"type": "text"
+								},
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "Завантаження файла. У Body → form-data поле 'avatar' має тип 'file' — натисніть 'Select Files' і виберіть будь-яку картинку з диска.\n\nВажливі моменти:\n• Шлях до файла прив'язаний локально — НЕ передається при експорті колекції іншим людям\n• Розмір тіла зростає (boundary + кодування), бекенд часто обмежує (наприклад, 10 МБ)\n• Для Newman у CI використовуйте --working-dir щоб вказати папку з файлами"
+					},
+					"response": []
+				},
+				{
+					"name": "9.4 Binary body (сирий файл як тіло)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Сервер прийняв бінарне тіло\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/octet-stream"
+							}
+						],
+						"body": {
+							"mode": "file",
+							"file": {
+								"src": ""
+							}
+						},
+						"url": {
+							"raw": "https://postman-echo.com/post",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"post"
+							]
+						},
+						"description": "Тіло — один файл як набір байт, без обгорток. Використовується для PUT-аплоадів у S3, надсилання зображень/відео напряму на бекенд, тощо.\n\nУ Body виберіть 'binary' і вкажіть файл. Content-Type задавайте вручну відповідно до файла: image/png, application/pdf, application/octet-stream і т.д."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "10. Postman Console (deep dive)",
+			"description": "Console (View → Show Postman Console, або Alt+Ctrl+C на Windows / Cmd+Alt+C на Mac) — головний інструмент дебага.\n\nЩо показує:\n• Усі ваші console.log/info/warn/error зі скриптів\n• Реальний URL після підстановки змінних\n• ВСІ заголовки запиту (включно зі службовими, що Postman додає сам)\n• Тіло запиту і відповіді\n• Network-деталі: DNS, TLS handshake, час кожного етапу\n• Помилки виконання скриптів зі stack trace\n\nФільтр зверху дозволяє шукати по тексту і ховати рівні логування.",
+			"item": [
+				{
+					"name": "10.1 Рівні логування",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Різні рівні відображаються різними кольорами у Console.",
+									"console.log(\"Звичайне повідомлення (сіре)\");",
+									"console.info(\"Інформаційне (синє)\");",
+									"console.warn(\"Попередження (жовте)\");",
+									"console.error(\"Помилка (червоне)\");",
+									"",
+									"// Об'єкти виводяться розгорнуто з можливістю клікнути та інспектувати:",
+									"console.log(\"Розгорнутий об'єкт:\", pm.response.json());",
+									"",
+									"// Зручно групувати логи для читабельності:",
+									"console.log(\"=== Перевірка поста ===\");",
+									"console.log(\"  id:\", pm.response.json().id);",
+									"console.log(\"  title:\", pm.response.json().title);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Відкрийте Postman Console (Alt+Ctrl+C на Win / Cmd+Alt+C на Mac) і подивіться, як різні рівні логування виглядають."
+					},
+					"response": []
+				},
+				{
+					"name": "10.2 Що насправді пішло на сервер",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// У консолі знайдіть запис цього запиту і розгорніть Request Headers.",
+									"// Побачите купу службових headers, які Postman додав АВТОМАТИЧНО:",
+									"//   Accept-Encoding, User-Agent, Connection, Postman-Token, Host, ...",
+									"//",
+									"// Також побачите Request URL з підставленим baseUrl і випадковим числом.",
+									"//",
+									"// Це найшвидший спосіб зрозуміти, чому запит працює у браузері,",
+									"// але не працює у Postman (або навпаки).",
+									"console.log(\"Шукай мене у консолі ↓\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Lecture-Demo",
+								"value": "console-deep-dive"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{$randomInt}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{$randomInt}}"
+							]
+						},
+						"description": "Відправте і подивіться у Console — побачите фінальний URL із підставленим випадковим числом, а також наш X-Lecture-Demo серед інших службових headers."
+					},
+					"response": []
+				},
+				{
+					"name": "10.3 Дебаг помилок скрипта",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Свідомі помилки — щоб показати, як Postman повідомляє про них.",
+									"// Розкоментуйте по черзі і дивіться у консолі.",
+									"",
+									"// === Помилка №1: звернення до неіснуючого поля ===",
+									"// const data = pm.response.json();",
+									"// console.log(data.nonExistent.field);  // TypeError: Cannot read properties of undefined",
+									"",
+									"// === Помилка №2: тест навмисно падає ===",
+									"// pm.test(\"Зламаний тест\", function () {",
+									"//     pm.expect(pm.response.json().id).to.eql(999);  // Реальний id = 1",
+									"// });",
+									"",
+									"// === Робочий тест ===",
+									"pm.test(\"А цей нормальний\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Розкоментуйте 'помилкові' рядки і відправте — у Console побачите повний stack trace, а у Test Results — червоний хрест із порівнянням 'expected vs actual'."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Цей скрипт виконується ПЕРЕД кожним запитом у колекції."
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Цей скрипт виконується ПІСЛЯ кожного запиту у колекції."
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://jsonplaceholder.typicode.com",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "preparedPostId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

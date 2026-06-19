@@ -1,0 +1,1509 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-0000-4000-8000-000000000002",
+		"name": "JSONPlaceholder Lecture 2 (Advanced)",
+		"description": "Друга, розширена лекція по Postman.\n\nПередумова: студенти вже знайомі з матеріалом Lecture 1 (HTTP-методи, параметри, headers, змінні, базові тести, Chai, JSON Schema).\n\nСтруктура:\n1. Керування потоком виконання (setNextRequest)\n2. Data-driven testing (тестові дані з JSON-файлів)\n3. Mock servers\n4. Авторизація (Authorization)\n5. Environments та області видимості змінних\n6. Visualizer\n7. Postman Flows (огляд)\n8. Корисні фічі Postman (snippets, codegen, docs, monitors)\n9. Newman CLI (запуск з командного рядка)\n\nДодаткові файли в репозиторії:\n• test-data/posts-test-data.json — тестові дані для Collection Runner\n• test-data/users-test-data.json — ще один data-файл\n• environments/JSONPlaceholder.dev.postman_environment.json — приклад environment\n• NEWMAN.md — інструкції по запуску через CLI",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Керування потоком (setNextRequest)",
+			"description": "За замовчуванням Collection Runner виконує запити послідовно зверху вниз. Функція postman.setNextRequest(name) дозволяє керувати порядком: пропускати, повторювати, розгалужувати потік.\n\nВажливо: setNextRequest працює ТІЛЬКИ у Collection Runner і Newman, у звичайному 'Send' вона ігнорується.\n\nНовий API (Postman 10+): pm.execution.setNextRequest(name) та pm.execution.skipRequest() — еквівалент з кращою читабельністю.",
+			"item": [
+				{
+					"name": "1.1 Старт — отримати пост",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Перевіряємо умову і направляємо runner на потрібний наступний запит.",
+									"const post = pm.response.json();",
+									"console.log(\"userId з поста:\", post.userId);",
+									"",
+									"if (post.userId === 1) {",
+									"    // Класичний API (працює всюди, в т.ч. у Newman):",
+									"    postman.setNextRequest(\"1.2 Гілка A — userId дорівнює 1\");",
+									"} else {",
+									"    // Новий API (Postman 10+):",
+									"    pm.execution.setNextRequest(\"1.3 Гілка B — інший userId\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Перший запит у послідовності. Залежно від отриманого userId Runner перейде або до запиту 1.2 (гілка A), або до 1.3 (гілка B)."
+					},
+					"response": []
+				},
+				{
+					"name": "1.2 Гілка A — userId дорівнює 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Гілка A: користувач 1\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().id).to.eql(1);",
+									"});",
+									"",
+									"// Після гілки A одразу зупиняємо runner — пропускаємо 1.3 та 1.4.",
+									"postman.setNextRequest(null);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Виконається, тільки якщо попередній крок направив runner сюди. postman.setNextRequest(null) — спеціальне значення, що зупиняє виконання колекції."
+					},
+					"response": []
+				},
+				{
+					"name": "1.3 Гілка B — інший userId",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Гілка B спрацювала\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						},
+						"description": "Альтернативна гілка."
+					},
+					"response": []
+				},
+				{
+					"name": "1.4 Skip — пропустити запит",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// pm.execution.skipRequest() пропускає поточний запит цілком,",
+									"// нічого не відправляючи. Зручно для умовного пропуску.",
+									"const skipFlag = pm.collectionVariables.get(\"skipMe\") === \"true\";",
+									"if (skipFlag) {",
+									"    console.log(\"Пропускаємо цей запит\");",
+									"    pm.execution.skipRequest();",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Якщо не пропустили — статус 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"2"
+							]
+						},
+						"description": "Демонстрація pm.execution.skipRequest() — пропуск запиту з pre-request скрипта. Поставте змінну skipMe=true на рівні колекції і запустіть Runner."
+					},
+					"response": []
+				},
+				{
+					"name": "1.5 Цикл — викликати себе N разів",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Простий лічильник для імітації циклу.",
+									"let counter = Number(pm.collectionVariables.get(\"loopCounter\") || 0);",
+									"counter++;",
+									"pm.collectionVariables.set(\"loopCounter\", counter);",
+									"",
+									"const MAX = 3;",
+									"console.log(\"Ітерація\", counter, \"з\", MAX);",
+									"",
+									"if (counter < MAX) {",
+									"    // Викликаємо цей самий запит ще раз.",
+									"    postman.setNextRequest(pm.info.requestName);",
+									"} else {",
+									"    // Завершуємо цикл.",
+									"    pm.collectionVariables.unset(\"loopCounter\");",
+									"    postman.setNextRequest(null);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{$randomInt}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{$randomInt}}"
+							]
+						},
+						"description": "Імітація циклу через лічильник у collection variable. Запит викликає сам себе, поки counter < MAX. Альтернативний варіант — Collection Runner з iterations (див. data-driven testing)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Data-driven testing (JSON-файли)",
+			"description": "Замість писати окремий запит на кожен набір даних, можна підключити JSON або CSV файл у Collection Runner. Postman прогонить колекцію один раз на кожен запис у файлі.\n\nЯк запустити:\n1. Натисніть Run collection (стрілка біля назви колекції → Run).\n2. У вікні Collection Runner у полі 'Data' натисніть 'Select File' і виберіть test-data/posts-test-data.json.\n3. Iterations підставиться автоматично за кількістю записів.\n4. Запустіть.\n\nДоступ до даних поточної ітерації:\n• у тілі/URL/headers — як звичайна змінна: {{title}}, {{userId}}\n• у скрипті — pm.iterationData.get(\"title\")",
+			"item": [
+				{
+					"name": "2.1 POST — створити пост з даних файла",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Дані поточної ітерації доступні через pm.iterationData",
+									"console.log(\"Ітерація #\", pm.info.iteration);",
+									"console.log(\"title:\", pm.iterationData.get(\"title\"));",
+									"console.log(\"userId:\", pm.iterationData.get(\"userId\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const expectedStatus = Number(pm.iterationData.get(\"expectedStatus\"));",
+									"",
+									"pm.test(\"Статус збігається з очікуваним з файла\", function () {",
+									"    pm.expect(pm.response.code).to.eql(expectedStatus);",
+									"});",
+									"",
+									"pm.test(\"Сервер прийняв саме той title, що ми надіслали\", function () {",
+									"    pm.expect(pm.response.json().title).to.eql(pm.iterationData.get(\"title\"));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"{{title}}\",\n    \"body\": \"{{body}}\",\n    \"userId\": {{userId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Запустіть через Collection Runner з файлом test-data/posts-test-data.json. На кожній ітерації {{title}}, {{body}}, {{userId}} підставляються з відповідного запису JSON."
+					},
+					"response": []
+				},
+				{
+					"name": "2.2 GET — перевірити користувача з даних файла",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Статус 200 на GET користувача\", () => pm.response.to.have.status(200));",
+									"",
+									"// Перевіряємо ім'я, тільки якщо у файлі є поле expectedName.",
+									"// Так одну колекцію можна ганяти з різними data-файлами.",
+									"const expectedName = pm.iterationData.get(\"expectedName\");",
+									"if (expectedName) {",
+									"    pm.test(\"Ім'я користувача збігається з файлом\", function () {",
+									"        pm.expect(pm.response.json().name).to.eql(expectedName);",
+									"    });",
+									"} else {",
+									"    console.log(\"У data-файлі немає expectedName — пропускаємо перевірку імені.\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Перевіряємо користувача за userId з data-файла. Тест на ім'я виконується, тільки якщо у поточному записі є поле expectedName — це робить запит сумісним з різними файлами даних.\n\nПрацює з обома файлами:\n• test-data/posts-test-data.json — повний набір полів\n• test-data/users-test-data.json — тільки userId + expectedName"
+					},
+					"response": []
+				},
+				{
+					"name": "2.3 Як виглядає CSV-файл",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// CSV альтернатива JSON-файлу. Формат:",
+									"// title,body,userId,expectedStatus",
+									"// \"Перший\",\"Body 1\",1,201",
+									"// \"Другий\",\"Body 2\",2,201",
+									"//",
+									"// Перший рядок — назви полів (стають іменами змінних).",
+									"// Postman автоматично визначає тип у Collection Runner.",
+									"console.log(\"Цей запит — лише пояснення. Реальних викликів немає.\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Інформаційний запит. CSV-файли працюють так само, як JSON: перший рядок = імена змінних, наступні = ітерації. JSON зручніший для вкладених об'єктів, CSV — для табличних даних з Excel/Google Sheets."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Mock servers",
+			"description": "Mock server — це фейковий сервер усередині Postman, що повертає заздалегідь збережені відповіді. Корисний коли:\n• бекенд ще не готовий, а фронтенд/тести потрібно писати вже зараз\n• треба відтворити рідкісну ситуацію (помилка 500, timeout)\n• треба ізолювати тести від нестабільного зовнішнього API\n\nЯк створити мок:\n1. Відкрийте будь-який запит, виконайте його (Send).\n2. У панелі Response натисніть Save Response → Save as example.\n3. Дайте example осмислену назву (можна кілька прикладів на один запит).\n4. Клацніть правою на колекції → Mock collection → New Mock Server.\n5. Postman створить mockUrl на кшталт https://abc123.mock.pstmn.io\n6. Збережіть його у змінну {{mockUrl}}.\n\nЯк викликати конкретний example:\n• За path/query — мок повертає example, що збігається за URL і методом\n• Явно — заголовок x-mock-response-name: <ім'я example>\n• Зі затримкою — параметр ?_delay=2000 (мс)",
+			"item": [
+				{
+					"name": "3.1 Виклик мока (заміна baseUrl)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Мок повернув успішну відповідь\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mockUrl}}/posts/1",
+							"host": [
+								"{{mockUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Той самий шлях /posts/1, але домен — мок. Перед запуском підставте свій реальний mockUrl у змінну середовища (або в environments/JSONPlaceholder.dev.postman_environment.json)."
+					},
+					"response": []
+				},
+				{
+					"name": "3.2 Вибір конкретного example через header",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Якщо у вас збережено кілька examples з різними назвами,",
+									"// можна вимагати конкретний через header x-mock-response-name."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-mock-response-name",
+								"value": "Post not found 404",
+								"description": "Ім'я збереженого example, який треба повернути"
+							}
+						],
+						"url": {
+							"raw": "{{mockUrl}}/posts/9999",
+							"host": [
+								"{{mockUrl}}"
+							],
+							"path": [
+								"posts",
+								"9999"
+							]
+						},
+						"description": "Через заголовок x-mock-response-name змушуємо мок повернути саме той example, що нам потрібен — наприклад, заздалегідь збережену помилку 404, щоб протестувати обробку відсутніх ресурсів."
+					},
+					"response": []
+				},
+				{
+					"name": "3.3 Затримка відповіді (_delay)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Відповідь прийшла з затримкою ~2 сек\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.above(1500);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mockUrl}}/posts?_delay=2000",
+							"host": [
+								"{{mockUrl}}"
+							],
+							"path": [
+								"posts"
+							],
+							"query": [
+								{
+									"key": "_delay",
+									"value": "2000",
+									"description": "Затримка у мілісекундах"
+								}
+							]
+						},
+						"description": "Query-параметр _delay змушує мок чекати перед відповіддю. Корисно для тестування timeouts і UI-станів типу 'loading'."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Авторизація (Authorization)",
+			"description": "Вкладка Authorization дозволяє налаштувати автентифікацію не редагуючи headers вручну. Підтримується багато типів: Bearer Token, Basic Auth, API Key, OAuth 2.0, AWS Signature тощо.\n\nКлюч до повторного використання: налаштуйте Auth на рівні колекції/папки і поставте у запиті 'Inherit auth from parent' — токен підставиться у всі запити автоматично.",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{apiToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "4.1 Bearer Token (наслідування від колекції)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Authorization header додається ВИКОНАВЦЕМ запиту (не у pre-request),",
+									"// тому в pm.request.headers зі скрипта він зазвичай НЕ видно.",
+									"// Щоб побачити реальний header — відкрийте Postman Console.",
+									"console.log(\"Із скрипта Authorization:\", pm.request.headers.get(\"Authorization\"));",
+									"console.log(\"↑ undefined у Newman і у Postman — нормально для inherited auth.\");",
+									"",
+									"pm.test(\"Запит відправлено успішно з наслідуваним токеном\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "inherit"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Запит наслідує Authorization від батьківської папки (тип Bearer з токеном {{apiToken}}). У реальному API сервер би побачив 'Authorization: Bearer demo-token-12345'.\n\nВажливий нюанс: header додається ВИКОНАВЦЕМ запиту вже після prerequest-скриптів, тому pm.request.headers.get('Authorization') у тесті повертає undefined. Це нормально.\n\nЩоб побачити справжній відправлений header — відкрийте Postman Console (Alt+Ctrl+C) і розгорніть Request Headers цього запиту.\n\nJSONPlaceholder не вимагає авторизації, тож запит проходить — це лише демонстрація механізму inherit auth."
+					},
+					"response": []
+				},
+				{
+					"name": "4.2 Basic Auth (на рівні запиту)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Postman автоматично закодував логін:пароль у base64.",
+									"console.log(\"Authorization:\", pm.request.headers.get(\"Authorization\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "username",
+									"value": "demo-user",
+									"type": "string"
+								},
+								{
+									"key": "password",
+									"value": "demo-pass",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Basic Auth: Postman бере username:password, кодує у base64 і додає у заголовок Authorization: Basic <hash>. Зручно для тестових/legacy API."
+					},
+					"response": []
+				},
+				{
+					"name": "4.3 API Key (header або query)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"console.log(\"Усі headers:\", pm.request.headers.toJSON());"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "X-API-Key",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "{{apiToken}}",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "API Key — простий тип авторизації. Налаштовується ім'я ключа і де його передавати: 'header' або 'query'. Часто використовується у публічних API (Google Maps, OpenWeather тощо)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Environments та області видимості",
+			"description": "Environment — набір змінних під конкретне середовище (dev / staging / prod). Перемикається у правому верхньому куті Postman.\n\nОбласті видимості змінних, від найменшої до найбільшої:\n1. Local (тимчасові, тільки для одного запуску)\n2. Data (з файла Collection Runner)\n3. Environment (поточне середовище)\n4. Collection (на рівні колекції)\n5. Global (на весь Postman)\n\nЯкщо ім'я співпадає — виграє менша область. Це дозволяє перевизначати глобальні значення локально.\n\nДив. environments/JSONPlaceholder.dev.postman_environment.json — приклад файла environment.",
+			"item": [
+				{
+					"name": "5.1 Перевірка пріоритету змінних",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Один і той самий ключ 'demoVar' у різних областях.",
+									"pm.globals.set(\"demoVar\", \"GLOBAL\");",
+									"pm.collectionVariables.set(\"demoVar\", \"COLLECTION\");",
+									"pm.environment.set(\"demoVar\", \"ENVIRONMENT\");",
+									"pm.variables.set(\"demoVar\", \"LOCAL\");",
+									"",
+									"// pm.variables.get() поверне переможця за пріоритетом.",
+									"console.log(\"Переможець:\", pm.variables.get(\"demoVar\"));",
+									"// → LOCAL, бо найменша область видимості.",
+									"",
+									"// Прибираємо LOCAL — переможе ENVIRONMENT (якщо встановлено).",
+									"// pm.variables.unset(\"demoVar\") тут не працює для local,",
+									"// але для демо можна закоментувати рядок з pm.variables.set вище."
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Запит виконався\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Чистимо за собою.",
+									"pm.globals.unset(\"demoVar\");",
+									"pm.collectionVariables.unset(\"demoVar\");",
+									"pm.environment.unset(\"demoVar\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Демо пріоритету: одна змінна 'demoVar' задана у 4 областях. pm.variables.get() завжди повертає значення з найменшої доступної області."
+					},
+					"response": []
+				},
+				{
+					"name": "5.2 Перемикання environments",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Назва активного environment:",
+									"console.log(\"Активне середовище:\", pm.environment.name);",
+									"console.log(\"baseUrl з env:\", pm.environment.get(\"baseUrl\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Імпортуйте environments/JSONPlaceholder.dev.postman_environment.json (Import → файл) і виберіть його у випадному списку справа зверху. Скрипт виведе ім'я активного середовища у консоль."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Visualizer",
+			"description": "Visualizer — спосіб показати відповідь не як сирий JSON, а як HTML-таблицю, графік чи будь-яку розмітку. Зручно для звітів і презентації результатів.\n\nAPI: pm.visualizer.set(template, data) у test-скрипті. Результат з'являється у вкладці 'Visualize' панелі Response.",
+			"item": [
+				{
+					"name": "6.1 Список постів як HTML-таблиця",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const posts = pm.response.json();",
+									"",
+									"// Шаблон на Handlebars.",
+									"const template = `",
+									"<style>",
+									"  table { border-collapse: collapse; font-family: sans-serif; width: 100%; }",
+									"  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }",
+									"  th { background: #f4f4f4; }",
+									"  tr:nth-child(even) { background: #fafafa; }",
+									"</style>",
+									"<table>",
+									"  <thead><tr><th>ID</th><th>UserId</th><th>Title</th></tr></thead>",
+									"  <tbody>",
+									"    {{#each posts}}",
+									"    <tr><td>{{id}}</td><td>{{userId}}</td><td>{{title}}</td></tr>",
+									"    {{/each}}",
+									"  </tbody>",
+									"</table>`;",
+									"",
+									"pm.visualizer.set(template, { posts: posts.slice(0, 10) });",
+									"",
+									"pm.test(\"Відкрийте вкладку Visualize у Response\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Після відправки запиту перейдіть на вкладку Visualize у панелі Response. Замість JSON побачите красиву HTML-таблицю з першими 10 постами."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Postman Flows (огляд)",
+			"description": "Postman Flows — окремий візуальний редактор всередині Postman, де ви будуєте 'потік' з блоків (запитів, умов, циклів, перетворень) drag-and-drop без коду.\n\nКоли використовувати:\n• Складні бізнес-сценарії з умовами і паралельними гілками\n• Інтеграція з кількома API підряд (data pipeline)\n• Демо-сценарії для нетехнічних людей\n• Прототипування інтеграцій без backend\n\nЯк відкрити: ліва панель → Flows → New Flow.\n\nОсновні блоки:\n• Send Request — викликає запит з вашої колекції\n• Select — витягує поле з JSON-відповіді\n• Evaluate — JS-вираз / умова\n• Display — показує значення\n• Start — точка входу потоку\n\nFlows наразі не експортуються у JSON-форматі колекції — їх треба створювати руками всередині workspace.",
+			"item": [
+				{
+					"name": "7.1 Запит, який можна викликати з Flow",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Будь-який запит з колекції стає доступний у Flows як блок 'Send Request'. Цей запит спеціально простий — можна підключити у демо-flow і витягти, наприклад, email через блок Select.\n\nПриклад потоку: Start → Send Request (цей) → Select (path: email) → Display."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Корисні фічі Postman",
+			"description": "Зібрані 'must-know' можливості, які прискорюють щоденну роботу.",
+			"item": [
+				{
+					"name": "8.1 Snippets — швидкі шматки коду",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Праворуч від редактора Tests/Pre-request є панель Snippets.",
+									"// Клікніть на будь-який — код вставиться у курсор.",
+									"// Це швидкий спосіб не пам'ятати синтаксис.",
+									"",
+									"// Корисні snippets, які варто запам'ятати:",
+									"// • Status code: Code is 200",
+									"// • Response body: JSON value check",
+									"// • Response time is less than 200ms",
+									"// • Set a collection variable",
+									"// • Send a request"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Snippets — список готових шматків коду праворуч від редактора скриптів. Знижує поріг входу для QA, які тільки вчать JS."
+					},
+					"response": []
+				},
+				{
+					"name": "8.2 Code Generation (cURL, Python, JS, ...)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Натисніть </> справа від запиту (Code) — Postman згенерує",
+									"// готовий код мовою на вибір: cURL, Python requests, JS fetch,",
+									"// Node.js axios, Java OkHttp, C#, Go, PHP та ін.",
+									"// Зручно для документації або швидкого передавання запиту розробнику."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"demo\",\n    \"body\": \"demo\",\n    \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Натисніть іконку </> на бічній панелі справа від запиту, виберіть мову — отримаєте готовий код для копіювання у проєкт або у баг-репорт."
+					},
+					"response": []
+				},
+				{
+					"name": "8.3 Documentation — авто-документація колекції",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Опис цього запиту (поле description) автоматично потрапить у згенеровану документацію колекції.\n\nЯк створити: правою кнопкою на колекції → View Documentation → Publish. Отримаєте красиву публічну сторінку з усіма запитами, описами і прикладами."
+					},
+					"response": []
+				},
+				{
+					"name": "8.4 Monitors — запуск за розкладом",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Monitor — серверний шедулер Postman, який періодично запускає вашу колекцію (наприклад, кожні 5 хв) і шле сповіщення при падінні тестів.\n\nUse cases:\n• Health checks production API\n• Smoke-тести після деплою\n• Контроль SLA (час відповіді < N мс)\n\nЯк створити: ліва панель → Monitors → New Monitor → виберіть колекцію та environment."
+					},
+					"response": []
+				},
+				{
+					"name": "8.5 History, Workspaces, Sync",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Інші речі, які варто знати:\n\n• History (ліва панель) — всі запити, які ви відправляли. Можна відновити, навіть якщо не зберегли у колекцію.\n• Workspaces — простори для команд. Personal для себе, Team — спільні з колегами.\n• Sync — колекції автоматично синхронізуються між пристроями через ваш Postman account.\n• Forking & Pull Requests — колекції підтримують git-подібний workflow з форками і ревью.\n• Variables in URL — наведіть курсор на змінну {{baseUrl}} у URL, побачите поточне значення."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Cookies та Interceptor",
+			"description": "Cookies — невеликі шматочки даних, які сервер просить браузер/Postman зберегти і надсилати назад на кожному запиті. Класичний сценарій — сесія після логіну.\n\nДля тестування cookies використовуємо postman-echo.com:\n• GET /cookies/set?foo=bar — сервер встановлює cookie\n• GET /cookies — повертає поточні cookies\n\nUI: внизу панелі запиту є кнопка 'Cookies' — там видно всі cookies по доменах. Можна вручну редагувати, додавати, видаляти.",
+			"item": [
+				{
+					"name": "9.1 Сервер встановлює cookie",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Після цього запиту cookie 'sessionId' з'явиться у Cookies (внизу панелі).",
+									"pm.test(\"Cookie збережено\", function () {",
+									"    pm.expect(pm.cookies.has(\"sessionId\")).to.be.true;",
+									"});",
+									"",
+									"console.log(\"sessionId =\", pm.cookies.get(\"sessionId\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/cookies/set?sessionId=abc-12345&theme=dark",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"cookies",
+								"set"
+							],
+							"query": [
+								{
+									"key": "sessionId",
+									"value": "abc-12345"
+								},
+								{
+									"key": "theme",
+									"value": "dark"
+								}
+							]
+						},
+						"description": "Сервер у відповідь надсилає header Set-Cookie. Postman автоматично зберігає cookie для цього домену. Перевірити можна через pm.cookies.has()/get() або вручну через кнопку 'Cookies' внизу."
+					},
+					"response": []
+				},
+				{
+					"name": "9.2 Cookies автоматично летять на наступних запитах",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Підглянемо, які cookies сервер бачить від нас.",
+									"pm.test(\"Сервер отримав нашу cookie sessionId\", function () {",
+									"    const cookies = pm.response.json().cookies;",
+									"    pm.expect(cookies).to.have.property(\"sessionId\");",
+									"});",
+									"",
+									"console.log(\"Cookies, що пішли на сервер:\", pm.response.json().cookies);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/cookies",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"cookies"
+							]
+						},
+						"description": "Запустіть СПОЧАТКУ 9.1, потім цей запит. Постман автоматично прикріпить раніше збережену cookie sessionId до запиту — сервер її поверне у відповіді."
+					},
+					"response": []
+				},
+				{
+					"name": "9.3 Програмне керування через CookieJar",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Для роботи з cookies зі скрипта (запис, видалення) треба використовувати CookieJar.",
+									"// УВАГА: домен має бути доданий до Cookies allowlist (внизу панелі → Cookies → Whitelist).",
+									"// Для postman-echo.com можна не додавати — він у дефолтному переліку.",
+									"",
+									"const jar = pm.cookies.jar();",
+									"const domain = \"https://postman-echo.com\";",
+									"",
+									"// Встановити cookie зі скрипта:",
+									"jar.set(domain, \"manualCookie\", \"set-from-script\", (err, cookie) => {",
+									"    if (err) { console.error(\"Помилка:\", err); }",
+									"    else { console.log(\"Cookie встановлено:\", cookie); }",
+									"});",
+									"",
+									"// Інші доступні методи: jar.get, jar.getAll, jar.unset, jar.clear",
+									"// Усі — асинхронні з callback (err, result)."
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://postman-echo.com/cookies",
+							"protocol": "https",
+							"host": [
+								"postman-echo",
+								"com"
+							],
+							"path": [
+								"cookies"
+							]
+						},
+						"description": "CookieJar — програмний API для cookies. Робота асинхронна через callback'и. У відповіді сервера у полі 'cookies' побачите 'manualCookie', який ми встановили зі скрипта."
+					},
+					"response": []
+				},
+				{
+					"name": "9.4 Interceptor — синхронізація з браузером",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Interceptor — окреме розширення для Chrome від Postman. Дозволяє:\n\n• Витягувати cookies з браузера у Postman (зручно для авторизованих сесій — залогінилися у браузері, і Postman використовує ту саму сесію)\n• Перехоплювати HTTP-запити з браузера прямо у History Postman\n\nЯк налаштувати:\n1. Встановити розширення 'Postman Interceptor' у Chrome\n2. У Postman: внизу панелі Cookies → 'Sync Cookies' → вибрати домен\n3. Або: ліва панель → Capture requests → увімкнути Interceptor\n\nДокументація: https://learning.postman.com/docs/sending-requests/capturing-request-data/interceptor/"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "10. Async тести (done callback)",
+			"description": "Підвох, на якому ламаються майже всі: коли всередині pm.test є асинхронний код (pm.sendRequest, setTimeout, async/await), Postman ВВАЖАЄ тест успішним до того, як асинхронна частина встигне завершитись.\n\nРішення — функція з параметром done. Postman чекатиме виклику done() перш ніж позначити тест.",
+			"item": [
+				{
+					"name": "10.1 БАГ — sendRequest без done",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ЦЕЙ ТЕСТ БУДЕ 'ЗЕЛЕНИМ', АЛЕ ВІН РЕАЛЬНО НЕ ПЕРЕВІРЯЄ ВІДПОВІДЬ!",
+									"// Postman не знає, що йому треба чекати на sendRequest, тому тест",
+									"// завершується одразу, до того як прийшла відповідь.",
+									"",
+									"pm.test(\"Зламаний async тест (без done)\", function () {",
+									"    pm.sendRequest(\"https://jsonplaceholder.typicode.com/posts/9999\", (err, res) => {",
+									"        // Цей expect виконається, але ВЖЕ ПІСЛЯ того, як тест \"завершився\".",
+									"        // Помилка тут не призведе до падіння тесту — Postman її не зловить.",
+									"        pm.expect(res.code).to.eql(200);  // Реально буде 404",
+									"        console.warn(\"Експект виконано, але Postman вже не слухає\");",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Класичний помилковий патерн. Тест 'проходить', але реально нічого не перевіряє. Студент думає, що покрив код тестами, а насправді — ні. Дивіться у Console — побачите warning ПІСЛЯ того, як тест вже відмітився як passed."
+					},
+					"response": []
+				},
+				{
+					"name": "10.2 ПРАВИЛЬНО — з done",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Передаємо done як параметр функції. Postman чекатиме його виклику.",
+									"",
+									"pm.test(\"Правильний async тест\", function (done) {",
+									"    pm.sendRequest(\"https://jsonplaceholder.typicode.com/posts/1\", (err, res) => {",
+									"        if (err) {",
+									"            done(err);  // Передаємо помилку — тест впаде",
+									"            return;",
+									"        }",
+									"        pm.expect(res.code).to.eql(200);",
+									"        pm.expect(res.json().id).to.eql(1);",
+									"        done();  // Все ок — позначаємо завершення",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Правильний патерн: функція приймає done, ми викликаємо done() при успіху або done(err) при помилці. Postman чекатиме до 3000 мс (за замовчуванням) перш ніж зафейлити тест за таймаутом."
+					},
+					"response": []
+				},
+				{
+					"name": "10.3 Свідомо зламаний async — побачимо падіння",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Цей тест має впасти — perевіряємо як виглядає async-fail\", function (done) {",
+									"    pm.sendRequest(\"https://jsonplaceholder.typicode.com/posts/1\", (err, res) => {",
+									"        if (err) { done(err); return; }",
+									"        try {",
+									"            pm.expect(res.json().id).to.eql(999);  // Реально 1 — впаде",
+									"            done();",
+									"        } catch (e) {",
+									"            done(e);  // Прокидуємо expect-помилку через done",
+									"        }",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Цей тест навмисно падає. У try/catch ловимо помилку з expect() і передаємо у done(e) — інакше exception загубиться у async-колбеку. Дивіться Test Results — тест почервоніє з нормальним 'expected 1 to equal 999'."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "11. Helper-функції на рівні колекції",
+			"description": "Якщо у різних запитах ви пишете однаковий код (генерація даних, парсинг, логування) — це треба винести у helper.\n\nСтратегія А (рекомендована): функції визначені у pre-request КОЛЕКЦІЇ через bare-assignment (без var/let/const). Так об'єкт qa потрапляє у глобальний скоуп sandbox'а і доступний в усіх запитах. Працює як у Postman UI, так і в Newman.\n\nСтратегія Б (через eval): зберегти функцію як string у collection variable і виконати через eval(). Більш 'хакерський' варіант, але іноді корисний (наприклад, якщо колекція без collection-level скриптів).\n\nПодивіться на pre-request колекції (клік на назві колекції → вкладка Pre-request Script) — побачите визначення helpers.",
+			"item": [
+				{
+					"name": "11.1 Стратегія А — глобальний об'єкт qa",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Helpers визначені у pre-request КОЛЕКЦІЇ як bare-assignment 'qa = {...}'.",
+									"// Зайдіть у налаштування колекції → вкладка Pre-request Script — побачите код.",
+									"// Тут просто користуємось ним як звичайним об'єктом.",
+									"",
+									"console.log(\"Випадковий email:\", qa.randomEmail());",
+									"console.log(\"Випадкове число 1-100:\", qa.randomInt(1, 100));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// І у test-скрипті теж доступні.",
+									"qa.logResponse(\"GET post\", pm.response);",
+									"",
+									"pm.test(\"Статус 200\", () => pm.response.to.have.status(200));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Об'єкт qa визначений на рівні колекції через bare-assignment 'qa = {...}' — стає глобальним у sandbox'і і доступний з будь-якого скрипта.\n\nЯкщо б ми написали 'var qa = {...}' — змінна була б локальною для скрипта колекції і НЕ була б видна у запитах. Без var/let/const — у глобальному скоупі. Без strict mode це класичний JS-патерн."
+					},
+					"response": []
+				},
+				{
+					"name": "11.2 Стратегія Б — eval з collection variable",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Витягуємо helper-функцію зі змінної і виконуємо її через eval.",
+									"// Корисно, якщо ви хочете тримати helpers як 'код у даних'.",
+									"",
+									"eval(pm.collectionVariables.get(\"__helpers\"));",
+									"",
+									"pm.test(\"Helper працює\", function () {",
+									"    const greeting = sayHi(\"студент\");",
+									"    pm.expect(greeting).to.eql(\"Привіт, студент!\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Альтернативний патерн: функція як рядок у collection variable __helpers. eval() оживляє її у поточному скоупі. Працює у будь-якому контексті, але читабельність нижча."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "12. Newman CLI",
+			"description": "Newman — офіційний CLI-runner для Postman-колекцій. Дозволяє запускати тести з командного рядка та у CI/CD (GitHub Actions, GitLab CI, Jenkins).\n\nВстановлення (потрібен Node.js):\n\n    npm install -g newman\n    npm install -g newman-reporter-htmlextra\n\nДив. файл NEWMAN.md у репозиторії для повного набору команд та прикладу GitHub Actions workflow.\n\nЗапити в цій папці — лише довідник з командами у полі description.",
+			"item": [
+				{
+					"name": "9.1 Базовий запуск",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "newman run \"JSONPlaceholder Lecture 2.postman_collection.json\"\n\nЗапускає колекцію один раз. Виведе у консоль звіт по кожному запиту і підсумок (passed/failed)."
+					},
+					"response": []
+				},
+				{
+					"name": "9.2 З environment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "newman run \"JSONPlaceholder Lecture 2.postman_collection.json\" \\\n    -e environments/JSONPlaceholder.dev.postman_environment.json\n\nПрапор -e підключає environment з усіма змінними (baseUrl, mockUrl, apiToken). Можна мати окремі файли для dev/staging/prod."
+					},
+					"response": []
+				},
+				{
+					"name": "9.3 Data-driven запуск",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "newman run \"JSONPlaceholder Lecture 2.postman_collection.json\" \\\n    -d test-data/posts-test-data.json \\\n    --folder \"2. Data-driven testing (JSON-файли)\"\n\nПрапор -d підключає файл з даними. --folder обмежує запуск лише однією папкою — зручно щоб не ганяти ВСЮ колекцію."
+					},
+					"response": []
+				},
+				{
+					"name": "9.4 N ітерацій з затримкою",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "newman run collection.json -n 5 --delay-request 500\n\n-n 5  — повторити колекцію 5 разів\n--delay-request 500  — затримка 500 мс між запитами (не давити на API)"
+					},
+					"response": []
+				},
+				{
+					"name": "9.5 HTML-звіт (htmlextra)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "newman run collection.json \\\n    -r cli,htmlextra,junit \\\n    --reporter-htmlextra-export reports/report.html \\\n    --reporter-junit-export reports/junit.xml\n\nГенерує одразу три звіти:\n• cli — у консоль\n• htmlextra — гарний HTML-звіт з графіками\n• junit — XML для CI-систем (Jenkins, GitLab, TeamCity)"
+					},
+					"response": []
+				},
+				{
+					"name": "9.6 Корисні прапори",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "--bail            зупинити при першому падінні (для CI)\n--timeout-request 10000   таймаут окремого запиту, мс\n--insecure        ігнорувати помилки SSL (для тестових середовищ)\n--env-var \"key=value\"     задати змінну прямо у CLI\n--color on        кольоровий вивід у CI-логах\n--verbose         детальний вивід (headers, тіла)"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Helpers — об'єкт qa доступний в усіх запитах колекції.",
+					"// Використовуємо bare-assignment (без var/let/const) — створює змінну",
+					"// у глобальному скоупі sandbox'а. Працює як у Postman UI, так і в Newman.",
+					"qa = {",
+					"    randomEmail: () => `qa+${Date.now()}@test.com`,",
+					"    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,",
+					"    logResponse: (label, res) => console.log(`[${label}] ${res.code} ${res.status} — ${res.responseTime}ms`),",
+					"    extractAndStore: (key, jsonPath) => {",
+					"        const value = jsonPath.split('.').reduce((o, k) => o && o[k], pm.response.json());",
+					"        pm.collectionVariables.set(key, value);",
+					"        console.log(`Збережено ${key} = ${value}`);",
+					"        return value;",
+					"    }",
+					"};"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://jsonplaceholder.typicode.com",
+			"type": "string"
+		},
+		{
+			"key": "mockUrl",
+			"value": "https://PASTE-YOUR-MOCK-ID.mock.pstmn.io",
+			"type": "string"
+		},
+		{
+			"key": "apiToken",
+			"value": "demo-token-12345",
+			"type": "string"
+		},
+		{
+			"key": "skipMe",
+			"value": "false",
+			"type": "string"
+		},
+		{
+			"key": "__helpers",
+			"value": "function sayHi(name) { return 'Привіт, ' + name + '!'; }",
+			"type": "string"
+		}
+	]
+}

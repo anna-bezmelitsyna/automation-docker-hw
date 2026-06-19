@@ -1,0 +1,11 @@
+# Не тягнемо в образ зайве
+node_modules
+reports
+npm-debug.log*
+.git
+.gitignore
+Jenkinsfile
+docker-compose.yml
+Dockerfile
+.dockerignore
+README.md

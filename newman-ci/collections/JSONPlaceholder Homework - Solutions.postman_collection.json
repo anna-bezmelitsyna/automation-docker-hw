@@ -1,0 +1,1457 @@
+{
+	"info": {
+		"_postman_id": "hw-l1-l2-2025",
+		"name": "JSONPlaceholder Homework — Solutions",
+		"description": "# Еталонні відповіді до домашнього завдання\n\n**Для перевірки:** запусти через Collection Runner або Newman.\nСекція 5 (data-driven) потребує окремого запуску:\n`newman run \"JSONPlaceholder Homework - Solutions.postman_collection.json\" --folder \"5. Data-driven тестування\" -d test-data/homework-data.json`\n\nВсі інші секції запускаються без data-файлу.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. HTTP-методи",
+			"item": [
+				{
+					"name": "HW 1.1 — GET /posts (список усіх постів)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 1.1a — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 1.1b — Відповідь є масивом з 100 елементів\", function () {",
+									"    pm.expect(pm.response.json()).to.be.an(\"array\").with.lengthOf(100);",
+									"});",
+									"",
+									"pm.test(\"✅ 1.1c — Перший пост має поля id, userId, title, body\", function () {",
+									"    pm.expect(pm.response.json()[0]).to.have.all.keys(\"id\", \"userId\", \"title\", \"body\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Отримай список усіх постів. Перевір структуру відповіді та кількість елементів.\n\n**Лекція 1, секція 1–2.** Базовий GET-запит + pm.test + Chai assertions."
+					}
+				},
+				{
+					"name": "HW 1.2 — POST /posts (створення поста)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.collectionVariables.set(\"testTitle\", \"QA Test Post \" + Date.now());",
+									"console.log(\"testTitle:\", pm.collectionVariables.get(\"testTitle\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 1.2a — Статус 201\", () => pm.response.to.have.status(201));",
+									"",
+									"pm.test(\"✅ 1.2b — Відповідь містить поле id\", function () {",
+									"    pm.expect(pm.response.json()).to.have.property(\"id\");",
+									"});",
+									"",
+									"pm.test(\"✅ 1.2c — Title у відповіді відповідає відправленому\", function () {",
+									"    pm.expect(pm.response.json().title)",
+									"       .to.eql(pm.collectionVariables.get(\"testTitle\"));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Відправ POST-запит для створення нового поста. Title береться з collection variable testTitle, яку треба встановити у pre-request скрипті.\n\n**Лекція 1, секція 3–5.**",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"{{testTitle}}\",\n  \"body\": \"Тіло тестового поста\",\n  \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 1.3 — DELETE /posts/1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 1.3a — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 1.3b — Тіло відповіді є порожнім об'єктом {}\", function () {",
+									"    pm.expect(pm.response.json()).to.eql({});",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Видали пост. JSONPlaceholder відповідає 200 і порожнім тілом {}.\n\n**Лекція 1, секція 4.**"
+					}
+				}
+			],
+			"description": "Завдання 1.1–1.3. Охоплює GET, POST і DELETE запити. Лекція 1, секції 1–4."
+		},
+		{
+			"name": "2. Параметри та заголовки",
+			"item": [
+				{
+					"name": "HW 2.1 — GET /comments?postId=3 (query-параметри)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 2.1a — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 2.1b — Масив не порожній\", function () {",
+									"    pm.expect(pm.response.json()).to.be.an(\"array\").and.not.empty;",
+									"});",
+									"",
+									"pm.test(\"✅ 2.1c — Усі коментарі належать постові postId=3\", function () {",
+									"    pm.response.json().forEach(function (c) {",
+									"        pm.expect(c.postId).to.eql(3);",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/comments?postId=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments"
+							],
+							"query": [
+								{
+									"key": "postId",
+									"value": "3"
+								}
+							]
+						},
+						"description": "Фільтрація за query-параметром postId=3. Переконайся, що API справді повертає тільки потрібні записи.\n\n**Лекція 1, секція 2.**"
+					}
+				},
+				{
+					"name": "HW 2.2 — GET /posts/1 з кастомним заголовком",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// ✏️  ЗАВДАННЯ 2.2 — Pre-request",
+									"// Виводимо заголовки до відправки запиту.",
+									"// Зверни увагу: тут заголовки видно.",
+									"console.log(\"Заголовки запиту (pre-request):\", pm.request.headers.toObject());",
+									"",
+									"// TODO: Додай заголовок X-Student-Name у вкладці Headers цього запиту (не в скрипті).",
+									"// Після запуску переконайся, що він видно у виводі вище."
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 2.2 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"console.log(\"Response headers:\", pm.response.headers.toObject());",
+									"// Content-Type: application/json; charset=utf-8"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Student-Name",
+								"value": "Your-Name-Here"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Додай кастомний заголовок X-Student-Name до запиту. У Postman Console (Alt+Ctrl+C) перевір, що він відправляється разом із запитом.\n\nВідкрий вкладку Headers у запиті і додай: Key = X-Student-Name, Value = своє_ім'я.\n\n**Лекція 1, секція 5.**"
+					}
+				}
+			],
+			"description": "Завдання 2.1–2.2. Query-параметри та кастомні заголовки. Лекція 1, секції 2, 5."
+		},
+		{
+			"name": "3. Змінні та ланцюжки запитів",
+			"item": [
+				{
+					"name": "HW 3.1 — GET /users/{{randomUserId}} (pre-request генерація)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const userId = qa.randomInt(1, 10);",
+									"pm.collectionVariables.set(\"randomUserId\", userId.toString());",
+									"console.log(\"Обраний userId:\", userId);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 3.1a — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 3.1b — id користувача збігається з randomUserId\", function () {",
+									"    const expected = parseInt(pm.collectionVariables.get(\"randomUserId\"));",
+									"    pm.expect(pm.response.json().id).to.eql(expected);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{randomUserId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{randomUserId}}"
+							]
+						},
+						"description": "Pre-request скрипт генерує випадковий userId (1–10) і зберігає в collection variable. URL підставляє {{randomUserId}} автоматично.\n\n**Лекція 1, секція 6.**"
+					}
+				},
+				{
+					"name": "HW 3.2a — POST /posts → збережи id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 3.2a — Статус 201\", () => pm.response.to.have.status(201));",
+									"",
+									"pm.test(\"✅ 3.2a — Зберегли createdPostId\", function () {",
+									"    const id = pm.response.json().id;",
+									"    pm.collectionVariables.set(\"createdPostId\", id.toString());",
+									"    console.log(\"Збережено createdPostId:\", id);",
+									"    pm.expect(id).to.be.a(\"number\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Крок 1 ланцюжка. Створюємо пост і зберігаємо його id для наступного запиту.\n\n**Лекція 1, секція 7.**",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Тест ланцюжка\",\n  \"body\": \"Тіло поста\",\n  \"userId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 3.2b — GET /posts/{{createdPostId}} → перевір id",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// JSONPlaceholder fallback: id=101 не існує → використовуємо id=1",
+									"const rawId  = parseInt(pm.collectionVariables.get(\"createdPostId\") || \"1\");",
+									"const safeId = (rawId > 0 && rawId <= 100) ? rawId : 1;",
+									"pm.collectionVariables.set(\"createdPostId\", safeId.toString());",
+									"if (safeId !== rawId) {",
+									"    console.log(\"JSONPlaceholder fallback: id \" + rawId + \" → \" + safeId);",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 3.2b — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 3.2b — id поста збігається зі збереженим createdPostId\", function () {",
+									"    pm.expect(pm.response.json().id.toString())",
+									"       .to.eql(pm.collectionVariables.get(\"createdPostId\"));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{createdPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{createdPostId}}"
+							]
+						},
+						"description": "Крок 2 ланцюжка. URL містить {{createdPostId}} — значення, збережене в запиті 3.2a.\n\n**Лекція 1, секція 7.**"
+					}
+				}
+			],
+			"description": "Завдання 3.1–3.2. Collection variables, pre-request генерація, ланцюжки. Лекція 1, секції 6–7."
+		},
+		{
+			"name": "4. Assertions та JSON Schema",
+			"item": [
+				{
+					"name": "HW 4.1 — GET /users/1 (різні методи Chai)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 4.1 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 4.1 — Комплексна перевірка даних користувача\", function () {",
+									"    const json = pm.response.json();",
+									"    // .equal — точне порівняння (===)",
+									"    pm.expect(json.id).to.equal(1);",
+									"    // .eql — глибоке порівняння об'єктів",
+									"    pm.expect(json.company).to.eql({",
+									"        name: \"Romaguera-Crona\",",
+									"        catchPhrase: \"Multi-layered client-server neural-net\",",
+									"        bs: \"harness real-time e-markets\"",
+									"    });",
+									"    // .have.property — наявність вкладеного поля",
+									"    pm.expect(json.address).to.have.property(\"city\");",
+									"    // .include — входження підрядка",
+									"    pm.expect(json.name).to.include(\"Leanne\");",
+									"    // .match — регулярний вираз",
+									"    pm.expect(json.email).to.match(/@/);",
+									"    // .be.a — перевірка типу",
+									"    pm.expect(json.phone).to.be.a(\"string\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Напиши мінімум 5 assertions для GET /users/1, використовуючи різні методи Chai: .equal(), .eql(), .have.property(), .include(), .match().\n\n**Лекція 1, секція 8.**"
+					}
+				},
+				{
+					"name": "HW 4.2 — GET /todos/1 (JSON Schema)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 4.2 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"const schema = {",
+									"    type: \"object\",",
+									"    required: [\"userId\", \"id\", \"title\", \"completed\"],",
+									"    properties: {",
+									"        userId:    { type: \"number\" },",
+									"        id:        { type: \"number\" },",
+									"        title:     { type: \"string\" },",
+									"        completed: { type: \"boolean\" }",
+									"    },",
+									"    additionalProperties: false",
+									"};",
+									"",
+									"pm.test(\"✅ 4.2 — JSON Schema відповідає структурі /todos\", function () {",
+									"    pm.response.to.have.jsonSchema(schema);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/todos/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"todos",
+								"1"
+							]
+						},
+						"description": "Визнач JSON Schema для ендпоінта /todos/1 і валідуй відповідь через pm.response.to.have.jsonSchema().\n\n**Лекція 1, секція 8.**"
+					}
+				}
+			],
+			"description": "Завдання 4.1–4.2. Chai assertions та JSON Schema validation. Лекція 1, секція 8."
+		},
+		{
+			"name": "5. Data-driven тестування",
+			"item": [
+				{
+					"name": "HW 5.1 — GET /users/{{userId}} (з data-файлу)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Fallback: без data-файлу pm.iterationData порожній → userId=1",
+									"if (!pm.iterationData.get(\"userId\")) {",
+									"    pm.collectionVariables.set(\"userId\", \"1\");",
+									"    console.log(\"Fallback mode: userId=1 (запустіть з -d homework-data.json для повного тесту)\");",
+									"} else {",
+									"    pm.collectionVariables.set(\"userId\", pm.iterationData.get(\"userId\").toString());",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 5.1 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"const expectedName = pm.iterationData.get(\"expectedName\");",
+									"if (expectedName) {",
+									"    pm.test(\"✅ 5.1 — Ім'я збігається з файлом\", function () {",
+									"        pm.expect(pm.response.json().name).to.eql(expectedName);",
+									"    });",
+									"} else {",
+									"    console.log(\"Fallback mode — перевірку імені пропущено (немає data-файлу).\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "**ПЕРЕД ЗАПУСКОМ:** Створи файл test-data/homework-data.json такого формату:\n\n```json\n[\n    { \"userId\": 1, \"expectedName\": \"Leanne Graham\" },\n    { \"userId\": 3, \"expectedName\": \"Clementine Bauch\" },\n    { \"userId\": 5, \"expectedName\": \"Chelsey Dietrich\" }\n]\n```\n\nЗапусти через Newman:\n`newman run \"JSONPlaceholder Homework.postman_collection.json\" --folder \"5. Data-driven тестування\" -d test-data/homework-data.json`\n\nабо через Collection Runner: кнопка Run → вибери файл homework-data.json → Run.\n\n**Лекція 2, секція 2.**"
+					}
+				},
+				{
+					"name": "HW 5.2 — POST /posts (з даними з файлу)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Fallback: без data-файлу встановлюємо тестові дані",
+									"if (!pm.iterationData.get(\"title\")) {",
+									"    pm.collectionVariables.set(\"title\", \"Fallback Test Post\");",
+									"    pm.collectionVariables.set(\"body\",  \"Fallback test body\");",
+									"} else {",
+									"    pm.collectionVariables.set(\"title\", pm.iterationData.get(\"title\"));",
+									"    pm.collectionVariables.set(\"body\",  pm.iterationData.get(\"body\") || \"Тіло поста\");",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 5.2 — Статус 201\", () => pm.response.to.have.status(201));",
+									"",
+									"pm.test(\"✅ 5.2 — userId у відповіді збігається з даними\", function () {",
+									"    const expected = parseInt(pm.iterationData.get(\"userId\") || pm.collectionVariables.get(\"userId\") || \"1\");",
+									"    pm.expect(pm.response.json().userId).to.eql(expected);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Той самий data-файл — розшир його полями title та body для POST-запиту:\n\n```json\n[\n    { \"userId\": 1, \"title\": \"Пост від user 1\", \"body\": \"Текст\", \"expectedName\": \"Leanne Graham\" },\n    ...\n]\n```\n\n**Лекція 2, секція 2.**",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"{{title}}\",\n    \"body\": \"{{body}}\",\n    \"userId\": {{userId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				}
+			],
+			"description": "Завдання 5.1–5.2. Data-driven testing з JSON-файлом через Collection Runner / Newman. Лекція 2, секція 2."
+		},
+		{
+			"name": "6. Авторизація (Bearer)",
+			"item": [
+				{
+					"name": "HW 6.1 — GET /posts/1 (Bearer auth від папки)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Перевіряємо, що токен встановлено.",
+									"// (Якщо немає — використовується значення зі списку variables колекції)",
+									"if (!pm.collectionVariables.get(\"apiToken\")) {",
+									"    pm.collectionVariables.set(\"apiToken\", \"student-demo-token\");",
+									"    console.log(\"apiToken встановлено за замовчуванням.\");",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 6.1 — Статус 200 (Bearer auth наслідується від папки)\", () =>",
+									"    pm.response.to.have.status(200));",
+									"",
+									"// Inherited auth не видно зі скрипта — undefined нормально.",
+									"// Реальний header видно у Postman Console (Alt+Ctrl+C) → Request Headers.",
+									"console.log(\"Authorization зі скрипта:\", pm.request.headers.get(\"Authorization\"));",
+									"// → undefined (додається виконавцем після pre-request фази)"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Ця папка має Bearer авторизацію з токеном {{apiToken}}. Запит наслідує її автоматично — нічого додаткового налаштовувати не треба.\n\nДосліди, чи видно Authorization header зі скрипта (підказка: ні — і лекція 2 пояснює чому).\n\n**Лекція 2, секція 4.**"
+					}
+				}
+			],
+			"description": "Завдання 6.1. Bearer авторизація на рівні папки, наслідування у запиті. Лекція 2, секція 4.",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{apiToken}}",
+						"type": "string"
+					}
+				]
+			}
+		},
+		{
+			"name": "7. setNextRequest та потоки",
+			"item": [
+				{
+					"name": "HW 7.1a — GET /posts (перевір і вирішуй, що далі)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 7.1a — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"const posts = pm.response.json();",
+									"if (posts[0].userId === 1) {",
+									"    console.log(\"userId===1 → пропускаємо 7.1b, переходимо до 7.1c ✓\");",
+									"    pm.execution.setNextRequest(\"HW 7.1c — GET /todos/1 (кінець потоку)\");",
+									"} else {",
+									"    console.log(\"userId!==1 → виконуємо по порядку\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Перший крок потоку. Якщо перший пост має userId===1 — пропустити 7.1b і перейти одразу до 7.1c.\n\n`pm.execution.setNextRequest(\"назва_запиту\")` — назва повинна збігатись **точно** з полем name.\n\n⚠️ Запускай через **Collection Runner** або `newman run` — при одиночному Send setNextRequest ігнорується.\n\n**Лекція 2, секція 1.**"
+					}
+				},
+				{
+					"name": "HW 7.1b — GET /users/1 (має бути ПРОПУЩЕНИЙ)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Цей запит має бути ПРОПУЩЕНИЙ якщо в 7.1a спрацювала умова.",
+									"// Якщо ти бачиш цей тест як FAILED — setNextRequest спрацював правильно.",
+									"// Якщо PASSED — перевір логіку в 7.1a.",
+									"",
+									"pm.test(\"❌ 7.1b НЕ повинен виконуватись (setNextRequest мав перескочити)\", function () {",
+									"    pm.expect.fail(\"Цей запит не мав виконуватись! Перевір setNextRequest у 7.1a.\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Цей запит **має бути пропущений** — якщо setNextRequest у 7.1a налаштований правильно, Collection Runner перескочить його.\n\nТест навмисно падає — це і є критерій успіху: якщо 7.1b **не виконався**, завдання виконано.\n\n**Лекція 2, секція 1.**"
+					}
+				},
+				{
+					"name": "HW 7.1c — GET /todos/1 (кінець потоку)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Цей запит виконується завжди: або після 7.1a (через setNextRequest),",
+									"// або після 7.1b якщо перехід не спрацював.",
+									"",
+									"pm.test(\"✅ 7.1c — Кінець потоку, статус 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"console.log(\"7.1c виконано. Якщо 7.1b не виконувався — потік спрацював правильно! ✓\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/todos/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"todos",
+								"1"
+							]
+						},
+						"description": "Кінцева точка потоку. Виконується незалежно від того, чи була пропущена 7.1b.\n\n**Лекція 2, секція 1.**"
+					}
+				}
+			],
+			"description": "Завдання 7.1. setNextRequest: умовне пропускання кроку. ⚠️ Запускати через Collection Runner або Newman! Лекція 2, секція 1."
+		},
+		{
+			"name": "8. Async-тести та helpers",
+			"item": [
+				{
+					"name": "HW 8.1 — GET /posts/1 + pm.sendRequest всередині тесту",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 8.1 — Статус основного запиту 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 8.1 — Async: перевіряємо автора поста через pm.sendRequest\", function (done) {",
+									"    const postUserId = pm.response.json().userId;",
+									"    const url        = pm.collectionVariables.get(\"baseUrl\") + \"/users/\" + postUserId;",
+									"    pm.sendRequest(url, function (err, res) {",
+									"        if (err) { done(err); return; }",
+									"        pm.expect(res.code).to.eql(200);",
+									"        console.log(\"Автор поста:\", res.json().name);",
+									"        done();",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"1"
+							]
+						},
+						"description": "Продемонструй правильний async-тест: pm.sendRequest() всередині pm.test() з параметром `done`.\n\nБез `done` тест буде завжди зеленим, навіть якщо assertion всередині кидає помилку — тому параметр done обов'язковий для async-перевірок.\n\n**Лекція 2, секція 10.**"
+					}
+				},
+				{
+					"name": "HW 8.2 — GET /users/1 (helpers qa.*)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// qa визначений на рівні КОЛЕКЦІЇ — тут він вже доступний.",
+									"// Щоб переконатись:",
+									"console.log(\"qa доступний:\", typeof qa);",
+									"console.log(\"Методи:\", Object.keys(qa).join(\", \"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 8.2 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Три обов'язкові виклики qa helpers",
+									"console.log(\"Random email:\", qa.randomEmail());",
+									"console.log(\"Random int 1-100:\", qa.randomInt(1, 100));",
+									"qa.logResponse(\"HW-8.2\", pm.response);",
+									"",
+									"// Бонус: новий метод на льоту",
+									"qa.formatUser = function (json) { return \"id: \" + json.id + \", name: \" + json.name; };",
+									"console.log(\"User info:\", qa.formatUser(pm.response.json()));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "Використай об'єкт `qa` — він визначений на рівні колекції через bare assignment (без var/let/const), що робить його глобальним у sandbox'і і доступним з будь-якого скрипта колекції.\n\nВиклич мінімум 3 методи і перевір результати у Postman Console.\n\n**Лекція 2, секція 11.**"
+					}
+				}
+			],
+			"description": "Завдання 8.1–8.2. Async-тести з done() та helpers-об'єкт qa. Лекція 2, секції 10–11."
+		},
+		{
+			"name": "9. Фінальний флоу — \"Публікація в блозі\"",
+			"description": "## Реалістичний наскрізний сценарій\n\nСимулюємо повний цикл роботи з блог-API: від отримання профілю автора до видалення поста.\n\n```\n9.1  GET  /users/1          → зберегти blogUserId, blogUserName\n9.2  POST /posts            → зберегти blogPostId  ──── якщо ≠201 → стрибок до 9.6\n9.3  GET  /posts/{id}       → перевірити пост (JSON Schema + Chai)\n9.4  POST /comments         → async pre-check автора + зберегти blogCommentId\n9.5  PATCH/posts/{id}       → змінити заголовок, перевірити часткове оновлення\n9.6  DELETE/posts/{id}      → очищення (cleanup)\n```\n\n### Що охоплюється\n| Тема | Де |\n|------|----||\n| HTTP GET / POST / PATCH / DELETE | 9.1–9.6 |\n| Collection variables (chain) | blogUserId → blogPostId → blogCommentId |\n| JSON Schema | 9.1 (user), 9.3 (post) |\n| Chai (equal, eql, be.a, have.property) | 9.2, 9.3, 9.5 |\n| Bearer auth (наслідування) | вся папка |\n| setNextRequest (error handling) | 9.2 → 9.6 при failure |\n| pm.sendRequest + done() | 9.4 |\n| qa helpers | 9.1, 9.5, 9.6 |\n\n⚠️  **Для setNextRequest:** запускай через **Collection Runner** або `newman run` — при одиночному Send не працює.",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{apiToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "HW 9.1 — GET /users/1 (профіль автора)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Старт флоу — логуємо заголовок",
+									"console.log(\"═══════════════════════════════════════════\");",
+									"console.log(\"🚀 Старт флоу: Публікація в блозі\");",
+									"console.log(\"   apiToken:\", pm.collectionVariables.get(\"apiToken\"));",
+									"console.log(\"═══════════════════════════════════════════\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const userSchema = {",
+									"    type: \"object\",",
+									"    required: [\"id\", \"name\", \"username\", \"email\"],",
+									"    properties: {",
+									"        id:       { type: \"number\" },",
+									"        name:     { type: \"string\" },",
+									"        username: { type: \"string\" },",
+									"        email:    { type: \"string\" }",
+									"    }",
+									"};",
+									"",
+									"pm.test(\"✅ 9.1 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 9.1 — JSON Schema користувача валідна\", function () {",
+									"    pm.response.to.have.jsonSchema(userSchema);",
+									"});",
+									"",
+									"pm.test(\"✅ 9.1 — Email містить @\", function () {",
+									"    pm.expect(pm.response.json().email).to.match(/@/);",
+									"});",
+									"",
+									"pm.test(\"✅ 9.1 — Збережено blogUserId і blogUserName\", function () {",
+									"    const user = pm.response.json();",
+									"    pm.collectionVariables.set(\"blogUserId\",   user.id.toString());",
+									"    pm.collectionVariables.set(\"blogUserName\", user.name);",
+									"    console.log(\"Автор флоу:\", user.id, \"—\", user.name);",
+									"});",
+									"",
+									"qa.logResponse(\"9.1\", pm.response);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						},
+						"description": "**Крок 1/6.** Завантажуємо профіль автора і зберігаємо його дані для всіх наступних кроків.\n\n> 🔑 `blogUserId` та `blogUserName` будуть використані у кроках 9.2–9.6.\n\n**Теми:** GET, JSON Schema, Chai, Collection variables, qa helpers."
+					}
+				},
+				{
+					"name": "HW 9.2 — POST /posts (негативні кейси)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"console.log(\"🔴 Негативне тестування POST /posts — 5 невалідних кейсів\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const endpoint = pm.collectionVariables.get(\"baseUrl\") + \"/posts\";",
+									"",
+									"const negCases = [",
+									"    { label: \"1 — Порожнє тіло {}\",           payload: {},",
+									"      realExpected: 400, note: \"Усі обов'язкові поля відсутні\" },",
+									"    { label: \"2 — Відсутній title\",            payload: { body: \"Тіло\", userId: 1 },",
+									"      realExpected: 422, note: \"Поле title є обов'язковим\" },",
+									"    { label: \"3 — Пустий title (empty string)\",payload: { title: \"\", body: \"Тіло\", userId: 1 },",
+									"      realExpected: 422, note: \"Порожній рядок — невалідний заголовок\" },",
+									"    { label: \"4 — userId є рядком\",            payload: { title: \"T\", body: \"B\", userId: \"рядок\" },",
+									"      realExpected: 422, note: \"userId повинен бути числом\" },",
+									"    { label: \"5 — userId не існує (99999)\",    payload: { title: \"T\", body: \"B\", userId: 99999 },",
+									"      realExpected: 404, note: \"Референційна цілісність: userId має вказувати на реального юзера\" },",
+									"];",
+									"",
+									"negCases.forEach(function (tc) {",
+									"    pm.test(\"❌ Негативний кейс: \" + tc.label, function (done) {",
+									"        pm.sendRequest({",
+									"            url:    endpoint,",
+									"            method: \"POST\",",
+									"            header: [{ key: \"Content-Type\", value: \"application/json\" }],",
+									"            body:   { mode: \"raw\", raw: JSON.stringify(tc.payload) }",
+									"        }, function (err, res) {",
+									"            if (err) { done(err); return; }",
+									"            console.log(\"[\" + tc.label + \"] \" + tc.note);",
+									"            console.log(\"  → Отримали: \" + res.code +",
+									"                        \" | Реальне API поверне: \" + tc.realExpected);",
+									"            // JSONPlaceholder fake API — повертає 201 для будь-якого тіла.",
+									"            // У реальному API: pm.expect(res.code).to.eql(tc.realExpected);",
+									"            pm.expect(res.code).to.eql(201);",
+									"            done();",
+									"        });",
+									"    });",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "**Крок 2/7.** 5 невалідних кейсів для POST /posts — всі через `pm.sendRequest` з одного тест-скрипту.\n\n| # | Невалідний кейс | Очікуваний статус реального API |\n|---|-----------------|----------------------------------|\n| 1 | Порожнє тіло `{}` | 400 Bad Request |\n| 2 | Відсутній `title` | 422 Unprocessable Entity |\n| 3 | Пустий `title: \"\"` | 422 Unprocessable Entity |\n| 4 | `userId: \"рядок\"` | 422 Unprocessable Entity |\n| 5 | `userId: 99999` (не існує) | 404 / 422 |\n\n> ℹ️ JSONPlaceholder повертає `201` для будь-якого тіла — це fake API. Тести документують **що** перевіряти, а не реальну поведінку.\n\n**Теми:** pm.sendRequest, async done(), негативне тестування, реферальна цілісність."
+					}
+				},
+				{
+					"name": "HW 9.3 — POST /posts (публікація)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо унікальний заголовок та тіло — кожен запуск різний.",
+									"// qa.randomEmail() доступний через bare-assignment у pre-request колекції.",
+									"const title = \"[QA Test] Публікація \" + Date.now();",
+									"const body  = \"Автоматизований тест. Автор: \" + qa.randomEmail();",
+									"pm.collectionVariables.set(\"blogTitle\", title);",
+									"pm.collectionVariables.set(\"blogBody\",  body);",
+									"console.log(\"Заголовок поста:\", title);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 9.3 — Статус 201 Created\", () => pm.response.to.have.status(201));",
+									"",
+									"pm.test(\"✅ 9.3 — title, userId та id у відповіді коректні\", function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.title).to.eql(pm.collectionVariables.get(\"blogTitle\"));",
+									"    pm.expect(json.userId).to.eql(parseInt(pm.collectionVariables.get(\"blogUserId\")));",
+									"    pm.expect(json.id).to.be.a(\"number\").and.above(0);",
+									"});",
+									"",
+									"pm.test(\"✅ 9.3 — Збережено blogPostId\", function () {",
+									"    const id = pm.response.json().id;",
+									"    pm.collectionVariables.set(\"blogPostId\", id.toString());",
+									"    console.log(\"📌 blogPostId =\", id);",
+									"});",
+									"",
+									"if (pm.response.code !== 201) {",
+									"    console.warn(\"⚠️  Пост не створено! Переходимо до очищення.\");",
+									"    pm.execution.setNextRequest(\"HW 9.7 — DELETE /posts (видалення)\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "**Крок 2/6.** Публікуємо пост від імені автора (blogUserId).\n\n> ⚠️ **setNextRequest-захист:** якщо POST поверне не 201 — автоматично перестрибуємо до 9.6 (DELETE), пропускаючи кроки 9.3–9.5. Це стандартний патерн у test automation: *якщо головна дія не вдалась — не виконуй залежні перевірки, одразу прибирай за собою.*\n\n**Теми:** POST, Chai, Collection variables, setNextRequest.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\":  \"{{blogTitle}}\",\n    \"body\":   \"{{blogBody}}\",\n    \"userId\": {{blogUserId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.4 — GET /posts (перевірка публікації)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// JSONPlaceholder симулює створення (повертає id=101), але не зберігає дані.",
+									"// GET /posts/101 поверне 404. Для демонстрації флоу використовуємо відомий пост.",
+									"// У реальному API цей блок не потрібен — {{blogPostId}} підставлявся б напряму.",
+									"const rawId = parseInt(pm.collectionVariables.get(\"blogPostId\") || \"1\");",
+									"const safeId = (rawId > 0 && rawId <= 100) ? rawId : 1;",
+									"pm.collectionVariables.set(\"blogPostId\", safeId.toString());",
+									"if (safeId !== rawId) {",
+									"    console.log(\"ℹ️  JSONPlaceholder: id \" + rawId + \" → fallback до id=\" + safeId);",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const postSchema = {",
+									"    type: \"object\",",
+									"    required: [\"userId\", \"id\", \"title\", \"body\"],",
+									"    properties: {",
+									"        userId: { type: \"number\" },",
+									"        id:     { type: \"number\" },",
+									"        title:  { type: \"string\" },",
+									"        body:   { type: \"string\" }",
+									"    },",
+									"    additionalProperties: false",
+									"};",
+									"",
+									"pm.test(\"✅ 9.4 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 9.4 — JSON Schema поста валідна\", function () {",
+									"    pm.response.to.have.jsonSchema(postSchema);",
+									"});",
+									"",
+									"pm.test(\"✅ 9.4 — id є числом\", function () {",
+									"    pm.expect(pm.response.json().id).to.be.a(\"number\");",
+									"});",
+									"",
+									"pm.test(\"✅ 9.4 — userId збігається з автором\", function () {",
+									"    pm.expect(pm.response.json().userId)",
+									"       .to.eql(parseInt(pm.collectionVariables.get(\"blogUserId\")));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 3/6.** Перевіряємо, що пост доступний за збереженим blogPostId.\n\n> **JSONPlaceholder нюанс:** POST /posts повертає `id: 101`, але GET /posts/101 → 404 (дані не зберігаються). Pre-request автоматично використовує `id=1` як fallback. У реальному API такого не було б.\n\n**Теми:** GET, JSON Schema, Chai (.to.be.a), Collection variables."
+					}
+				},
+				{
+					"name": "HW 9.5 — POST /comments (коментар до поста)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо дані коментаря",
+									"pm.collectionVariables.set(\"commentEmail\", qa.randomEmail());",
+									"console.log(\"Коментує:\", pm.collectionVariables.get(\"commentEmail\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 9.5 — Async: автор існує перед коментуванням\", function (done) {",
+									"    const userId  = pm.collectionVariables.get(\"blogUserId\");",
+									"    const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+									"    pm.sendRequest(baseUrl + \"/users/\" + userId, function (err, res) {",
+									"        if (err) { done(err); return; }",
+									"        pm.expect(res.code).to.eql(200, \"Автор повинен існувати\");",
+									"        console.log(\"Pre-check: автор [\" + userId + \"] існує ✓\");",
+									"        done();",
+									"    });",
+									"});",
+									"",
+									"pm.test(\"✅ 9.5 — Статус 201\", () => pm.response.to.have.status(201));",
+									"",
+									"pm.test(\"✅ 9.5 — postId у коментарі відповідає blogPostId\", function () {",
+									"    pm.expect(pm.response.json().postId)",
+									"       .to.eql(parseInt(pm.collectionVariables.get(\"blogPostId\")));",
+									"});",
+									"",
+									"pm.test(\"✅ 9.5 — Збережено blogCommentId\", function () {",
+									"    const id = pm.response.json().id;",
+									"    pm.collectionVariables.set(\"blogCommentId\", id.toString());",
+									"    console.log(\"💬 blogCommentId =\", id);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"comments"
+							]
+						},
+						"description": "**Крок 4/6.** Додаємо коментар до нашого поста.\n\n> 🔍 **Async pre-check:** перед POST виконуємо `pm.sendRequest` всередині тест-скрипта, щоб переконатись що автор існує. Без параметра `done` тест завжди зелений — навіть якщо assertion всередині кидає помилку. Завжди передавай `done` для async-тестів!\n\n**Теми:** POST, pm.sendRequest, done(), Chai, Collection variables.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postId\": {{blogPostId}},\n    \"name\":   \"QA тест-коментар\",\n    \"email\":  \"{{commentEmail}}\",\n    \"body\":   \"Автоматизований коментар до поста {{blogPostId}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.6 — PATCH /posts (редагування публікації)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Генеруємо новий заголовок зі збереженням старого як основи",
+									"const oldTitle = pm.collectionVariables.get(\"blogTitle\") || \"Пост\";",
+									"const updated  = \"[Edited] \" + oldTitle.replace(\"[QA Test] \", \"\") + \" — \" + Date.now();",
+									"pm.collectionVariables.set(\"updatedTitle\", updated);",
+									"console.log(\"Старий заголовок:\", oldTitle);",
+									"console.log(\"Новий заголовок:\", updated);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 9.6 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 9.6 — Title оновлено до нового значення\", function () {",
+									"    pm.expect(pm.response.json().title)",
+									"       .to.eql(pm.collectionVariables.get(\"updatedTitle\"));",
+									"});",
+									"",
+									"pm.test(\"✅ 9.6 — id і userId залишились незмінними\", function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(parseInt(pm.collectionVariables.get(\"blogPostId\")));",
+									"    pm.expect(json.userId).to.eql(parseInt(pm.collectionVariables.get(\"blogUserId\")));",
+									"});",
+									"",
+									"qa.logResponse(\"9.6 PATCH post\", pm.response);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 5/6.** Редагуємо заголовок поста (PATCH — часткове оновлення).\n\n> Ключова відмінність PATCH від PUT: PATCH змінює тільки передані поля, PUT замінює увесь ресурс. Тут ми перевіряємо це явно — `id` і `userId` повинні залишитись незмінними.\n\n**Теми:** PATCH, Chai, Collection variables, qa helpers.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"{{updatedTitle}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "HW 9.7 — DELETE /posts (видалення)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"✅ 9.7 — Статус 200\", () => pm.response.to.have.status(200));",
+									"",
+									"pm.test(\"✅ 9.7 — Тіло відповіді є порожнім {}\", function () {",
+									"    pm.expect(pm.response.json()).to.eql({});",
+									"});",
+									"",
+									"qa.logResponse(\"9.7 DELETE post\", pm.response);",
+									"console.log(\"═══════════════════════════════════════════\");",
+									"console.log(\"🏁 Флоу завершено\");",
+									"console.log(\"   Автор:      \", pm.collectionVariables.get(\"blogUserName\"));",
+									"console.log(\"   Post ID:    \", pm.collectionVariables.get(\"blogPostId\"));",
+									"console.log(\"   Comment ID: \", pm.collectionVariables.get(\"blogCommentId\"));",
+									"console.log(\"═══════════════════════════════════════════\");"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/{{blogPostId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"{{blogPostId}}"
+							]
+						},
+						"description": "**Крок 6/6.** Видаляємо пост — завершення флоу.\n\n> Цей крок виконується завжди: або в штатному порядку після 9.5, або через `setNextRequest` з 9.2 якщо публікація не вдалась.\n\n**Теми:** DELETE, Chai, qa helpers, підсумкове логування."
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Helpers — доступні в усіх запитах через bare assignment (без var/let/const).",
+					"// Саме завдяки відсутності 'var' ці функції стають глобальними в sandbox'і.",
+					"// Спробуй: у будь-якому test-скрипті виклич qa.randomEmail() або qa.randomInt(1, 10).",
+					"qa = {",
+					"    randomEmail: () => `qa+${Date.now()}@test.com`,",
+					"    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,",
+					"    logResponse: (label, res) => console.log(`[${label}] ${res.code} ${res.status} — ${res.responseTime}ms`),",
+					"    extractAndStore: (key, jsonPath) => {",
+					"        const value = jsonPath.split('.').reduce((o, k) => o && o[k], pm.response.json());",
+					"        pm.collectionVariables.set(key, value);",
+					"        console.log(`Збережено ${key} = ${value}`);",
+					"        return value;",
+					"    }",
+					"};"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://jsonplaceholder.typicode.com",
+			"type": "string"
+		},
+		{
+			"key": "testTitle",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "randomUserId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "createdPostId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "apiToken",
+			"value": "student-demo-token",
+			"type": "string"
+		},
+		{
+			"key": "blogUserId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "blogUserName",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogPostId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "blogCommentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogTitle",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "blogBody",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "updatedTitle",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "commentEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "title",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "body",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
