@@ -532,7 +532,7 @@
 									"//      pm.expect(pm.response.json()).to.eql({})",
 									"",
 									"pm.test(\"✅ 9.6 — Статус 200\", function () {",
-									"    // TODO",
+									"    pm.response.to.have.status(999);",
 									"});",
 									"",
 									"pm.test(\"✅ 9.6 — Тіло відповіді є порожнім {}\", function () {",
